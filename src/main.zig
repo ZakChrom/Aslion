@@ -4,16 +4,20 @@ const display = @import("display.zig");
 const c = @cImport({
     @cInclude("signal.h");
 });
+const ray = @cImport({
+	@cInclude("raylib.h");
+});
 
 pub fn main() !void {
     // Get the args and skip the first one (program name)
-    var args = try std.process.argsWithAllocator(std.heap.page_allocator);
-    defer args.deinit();
+    var args = std.process.args();
     _ = args.skip();
 
     const command = args.next().?;
 
     std.debug.print("sizeof(A8) = {d} bytes\n", .{@sizeOf(A8)});
+
+	try display.loadCharSetMemTape("char_set_memtape");
 
     if (std.mem.eql(u8, command, "print")) {
         try print(args.next().?);
@@ -21,9 +25,79 @@ pub fn main() !void {
         try speed(args.next().?);
     } else if (std.mem.eql(u8, command, "save")) {
         try save(args.next().?);
+    } else if (std.mem.eql(u8, command, "run")) {
+		try run(args.next().?);
     } else {
         std.debug.print(":staring_cat:\n", .{});
     }
+}
+
+fn run(filename: []const u8) !void {
+	var a8 = try A8.initFile(filename);
+	var pixels: [108*108]u32 = [_]u32{0}**(108*108);
+	const width = 108*4*2;
+	const height = 108*4;
+
+
+	ray.InitWindow(width, height, "Aslion");
+	ray.SetTargetFPS(60);
+
+	for (a8.memory[0][0..5000]) |mem| {
+		std.debug.print("{s} {d}\n", .{A8.astrisc[mem>>11], mem&0b11111111111});
+	}
+
+	var rtexture = ray.LoadRenderTexture(108, 108);
+
+	var pix: u32 = 0;
+	var x: u16 = 0;
+	var y: u16 = 0;
+
+	while (!ray.WindowShouldClose()) {
+		while (!a8.vbuf) a8.update();
+		a8.vbuf = false;
+
+		display.Draw(a8, &pixels);
+		ray.UpdateTexture(rtexture.texture, &pixels);
+
+		var ax: u32 = @intCast(ray.GetMouseX());
+		var ay: u32 = @intCast(ray.GetMouseY());
+		if (ax > 108*4) {
+			x = @intCast(@divExact(ax, 4)-108);
+			y = @intCast(@divExact(ay, 4));
+			pix = pixels[y*108+x];
+		}
+
+		a8.memory[1][53501] = ((x<<7)|y)|(a8.memory[1][53501]&0b1100000000000000);
+		if (ray.IsMouseButtonDown(1)) {
+			a8.memory[1][53501] |= 16384;
+		} else if (ray.IsMouseButtonDown(3)) {
+			a8.memory[1][53501] |= 32768;
+		} else if (ray.IsMouseButtonUp(1)) {
+			a8.memory[1][53501] ^= 16384;
+		} else if (ray.IsMouseButtonUp(3)) {
+			a8.memory[1][53501] ^= 32768;
+		}
+
+		ray.BeginDrawing();
+			ray.ClearBackground(ray.GRAY);
+			ray.DrawFPS(0, 0);
+			var key = ray.GetCharPressed();
+			var str = try std.fmt.allocPrint(
+				std.heap.page_allocator,
+				"PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nKEY: {c} {d}",
+				.{
+					a8.program_counter,
+					a8.a, a8.b, a8.c,
+					x, y, pix,
+					@as(u8, @truncate(@as(u32, @intCast(key)))), key
+				}
+			);
+			ray.DrawText(str.ptr, 0, 19, 19, ray.PURPLE);
+			ray.DrawTextureEx(rtexture.texture, .{.x = 108*4, .y = 0}, 0, 4, ray.WHITE);
+		ray.EndDrawing();
+	}
+
+	ray.CloseWindow();
 }
 
 // If the user does Ctrl c this will hopefully get set to true and the program should exit normally instead of being killed
@@ -86,7 +160,6 @@ fn print(filename: []const u8) !void {
 
 fn save(filename: []const u8) !void {
     var a8 = try A8.initFile(filename);
-    try display.loadCharSetMemTape("char_set_memtape");
     
     var i: u32 = 0;
     while (i < 120) {

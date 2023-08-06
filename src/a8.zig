@@ -1,6 +1,6 @@
-// TODO: Use raygui for GUI
+// DONE: Use raygui for GUI
     // TODO: A menu bar at the top
-    // TODO: Implement mouse
+    // DONE: Implement mouse
     // TODO: Implement keyboard
     // TODO: Make my own renderer instead of copying sam :staring_cat:
 // TODO: Implement filesystem :skull:

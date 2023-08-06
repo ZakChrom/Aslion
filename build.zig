@@ -12,7 +12,8 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibC();
     exe.linkSystemLibraryName("m");
-    exe.addIncludePath(.{.path = "src/"});
+	exe.linkSystemLibraryName("raylib");
+    //exe.addIncludePath(.{.path = "src/"});
 
     b.installArtifact(exe);
 
