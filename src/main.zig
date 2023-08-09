@@ -1,3 +1,14 @@
+// DONE: Use raygui for GUI
+    // TODO: A menu bar at the top
+    // DONE: Implement mouse
+    // TODO: Implement keyboard
+    // TODO: Make my own renderer instead of copying sam :staring_cat:
+// TODO: Implement filesystem :skull:
+
+// TODO?: Figure out how to store the memory better. Maybe std.ArrayList?
+    // There isnt a good way making 2d array with that tho
+// TODO?: Implement easy way of setting/getting expansion ports. Maybe normal memory too idk
+
 const std = @import("std");
 const A8 = @import("a8.zig");
 const display = @import("display.zig");
@@ -8,6 +19,7 @@ const ray = @cImport({
 	@cInclude("raylib.h");
 });
 
+/// Da main function
 pub fn main() !void {
     // Get the args and skip the first one (program name)
     var args = std.process.args();
@@ -19,12 +31,12 @@ pub fn main() !void {
 
 	try display.loadCharSetMemTape("char_set_memtape");
 
-    if (std.mem.eql(u8, command, "print")) {
-        try print(args.next().?);
-    } else if (std.mem.eql(u8, command, "speed")) {
+    //if (std.mem.eql(u8, command, "print")) {
+    //    try print(args.next().?);
+    if (std.mem.eql(u8, command, "speed")) {
         try speed(args.next().?);
-    } else if (std.mem.eql(u8, command, "save")) {
-        try save(args.next().?);
+    //} else if (std.mem.eql(u8, command, "save")) {
+    //    try save(args.next().?);
     } else if (std.mem.eql(u8, command, "run")) {
 		try run(args.next().?);
     } else {
@@ -68,16 +80,21 @@ fn run(filename: []const u8) !void {
 		}
 
 		a8.memory[1][53501] = ((x<<7)|y)|(a8.memory[1][53501]&0b1100000000000000);
-		if (ray.IsMouseButtonDown(1)) {
-			a8.memory[1][53501] |= 16384;
-		} else if (ray.IsMouseButtonDown(3)) {
-			a8.memory[1][53501] |= 32768;
-		} else if (ray.IsMouseButtonUp(1)) {
-			a8.memory[1][53501] ^= 16384;
-		} else if (ray.IsMouseButtonUp(3)) {
-			a8.memory[1][53501] ^= 32768;
-		}
 
+		if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
+			std.debug.print("Left down\n", .{});
+			a8.memory[1][53501] = 16384 | a8.memory[1][53501];
+		} else if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_RIGHT)) {
+			std.debug.print("Right down\n", .{});
+			a8.memory[1][53501] = 32768 | a8.memory[1][53501];
+		} else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_LEFT)) {
+			std.debug.print("Left released\n", .{});
+			a8.memory[1][53501] = 16384 ^ a8.memory[1][53501];
+		} else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_RIGHT)) {
+			std.debug.print("Right released\n", .{});
+			a8.memory[1][53501] = 32768 ^ a8.memory[1][53501];
+		}
+		
 		ray.BeginDrawing();
 			ray.ClearBackground(ray.GRAY);
 			ray.DrawFPS(0, 0);
@@ -102,6 +119,7 @@ fn run(filename: []const u8) !void {
 
 // If the user does Ctrl c this will hopefully get set to true and the program should exit normally instead of being killed
 var shouldClose: bool = false;
+/// Meazures how fast the program goes in instructions per sec
 fn speed(filename: []const u8) !void {
     // Very cursed lambda function
     _ = c.signal(c.SIGINT, &struct{fn _(_: c_int) callconv(.C) void {
@@ -140,8 +158,8 @@ fn speed(filename: []const u8) !void {
 }
 
 // Runs a program until it vbufs. Then it prints the pixels and chars to stdout
-fn print(filename: []const u8) !void {
-    var a8 = try A8.initFile(filename);
+//fn print(filename: []const u8) !void {
+//    var a8 = try A8.initFile(filename);
     //while (true) {
     //    a8.update();
     //    if (a8.vbuf) {
@@ -151,28 +169,28 @@ fn print(filename: []const u8) !void {
     //    }
     //}
 
-    std.debug.print("Screen:\n", .{});
-    display.printScreen(a8);
+//    std.debug.print("Screen:\n", .{});
+//    display.printScreen(a8);
 
-    std.debug.print("Chars:\n", .{});
-    display.printChars(a8);
-}
+//    std.debug.print("Chars:\n", .{});
+//    display.printChars(a8);
+//}
 
-fn save(filename: []const u8) !void {
-    var a8 = try A8.initFile(filename);
+//fn save(filename: []const u8) !void {
+//    var a8 = try A8.initFile(filename);
     
-    var i: u32 = 0;
-    while (i < 120) {
-        a8.update();
-        if (a8.vbuf) {
-            i+=1;
-            a8.vbuf = false;
-            var buf: [100]u8 = undefined;
-            _ = try std.fmt.bufPrint(&buf, "./out/frame{d}.png", .{i});
-            display.render(a8, &buf);
-        }
-    }
-}
+//    var i: u32 = 0;
+//    while (i < 120) {
+//        a8.update();
+//        if (a8.vbuf) {
+//            i+=1;
+//            a8.vbuf = false;
+//            var buf: [100]u8 = undefined;
+//            _ = try std.fmt.bufPrint(&buf, "./out/frame{d}.png", .{i});
+//            display.render(a8, &buf);
+//        }
+//    }
+//}
 
 // Unused code for now
 // var inst = a8.memory[0][a8.program_counter-1]>>11;
