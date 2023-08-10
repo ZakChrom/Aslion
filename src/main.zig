@@ -52,11 +52,6 @@ fn run(filename: []const u8) !void {
 
 
 	ray.InitWindow(width, height, "Aslion");
-	ray.SetTargetFPS(60);
-
-	for (a8.memory[0][0..5000]) |mem| {
-		std.debug.print("{s} {d}\n", .{A8.astrisc[mem>>11], mem&0b11111111111});
-	}
 
 	var rtexture = ray.LoadRenderTexture(108, 108);
 
@@ -82,21 +77,17 @@ fn run(filename: []const u8) !void {
 		a8.memory[1][53501] = ((x<<7)|y)|(a8.memory[1][53501]&0b1100000000000000);
 
 		if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
-			std.debug.print("Left down\n", .{});
 			a8.memory[1][53501] = 16384 | a8.memory[1][53501];
 		} else if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_RIGHT)) {
-			std.debug.print("Right down\n", .{});
 			a8.memory[1][53501] = 32768 | a8.memory[1][53501];
 		} else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_LEFT)) {
-			std.debug.print("Left released\n", .{});
 			a8.memory[1][53501] = 16384 ^ a8.memory[1][53501];
 		} else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_RIGHT)) {
-			std.debug.print("Right released\n", .{});
 			a8.memory[1][53501] = 32768 ^ a8.memory[1][53501];
 		}
 		
 		ray.BeginDrawing();
-			ray.ClearBackground(ray.GRAY);
+			ray.ClearBackground(ray.RAYWHITE);
 			ray.DrawFPS(0, 0);
 			var key = ray.GetCharPressed();
 			var str = try std.fmt.allocPrint(
