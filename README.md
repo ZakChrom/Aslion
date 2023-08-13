@@ -5,3 +5,5 @@
 ```console
 $ ./aslion file.asm
 ```
+
+### I use zig version 0.12.0-dev.25+36c57c3ba to build this
