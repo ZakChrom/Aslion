@@ -5,127 +5,8 @@ const A8 = @import("a8.zig");
 //    @cInclude("stb_image_write.h");
 //});
 
-var asciiToSdcii: [600]i32 = [600]i32;
-var sdciiToAscii: [600]i32 = [600]i32;
-
-pub fn generateAsciiSdciiTables() void {
-	for (0..599) |i| {
-		asciiToSdcii[i] = -1;
-		sdciiToAscii[i] = -1;
-	}
-
-	asciiToSdcii['\n'] = 85; // enter -> enter
-	asciiToSdcii[' '] = 0; // space -> blank
-	//asciiToSdcii[58] = 1; // f1 -> smaller solid square
-	//asciiToSdcii[59] = 2; // f2 -> full solid square
-	asciiToSdcii['+'] = 3; // + -> +
-	asciiToSdcii['-'] = 4; // - -> -
-	asciiToSdcii['*'] = 5; // * -> *
-	asciiToSdcii['/'] = 6; // / -> /
-	//asciiToSdcii[60] = 7; // f3 -> full hollow square
-	asciiToSdcii['_'] = 8; // _ -> _
-	//asciiToSdcii[80] = 9; // l-arr -> <
-	//asciiToSdcii[79] = 10; // r-arr -> >
-	//asciiToSdcii[82] = 71; // u-arr -> u-arr
-	//asciiToSdcii[81] = 72; // d-arr -> d-arr
-	asciiToSdcii['|'] = 11; // | -> vertical line |
-	//asciiToSdcii[66] = 12; // f9 -> horizontal line --
-	asciiToSdcii[','] = 54; // , -> ,
-	asciiToSdcii['/'] = 55; // . -> .
-
-	// Letters
-	asciiToSdcii['a'] = 13; // a -> a
-	asciiToSdcii['b'] = 14; // b -> b
-	asciiToSdcii['c'] = 15; // c -> c
-	asciiToSdcii['d'] = 16; // d -> d
-	asciiToSdcii['e'] = 17; // e -> e
-	asciiToSdcii['f'] = 18; // f -> f
-	asciiToSdcii['g'] = 19; // g -> g
-	asciiToSdcii['h'] = 20; // h -> h
-	asciiToSdcii['i'] = 21; // i -> i
-	asciiToSdcii['j'] = 22; // j -> j
-	asciiToSdcii['k'] = 23; // k -> k
-	asciiToSdcii['l'] = 24; // l -> l
-	asciiToSdcii['m'] = 25; // m -> m
-	asciiToSdcii['n'] = 26; // n -> n
-	asciiToSdcii['o'] = 27; // o -> o
-	asciiToSdcii['p'] = 28; // p -> p
-	asciiToSdcii['q'] = 29; // q -> q
-	asciiToSdcii['r'] = 30; // r -> r
-	asciiToSdcii['s'] = 31; // s -> s
-	asciiToSdcii['t'] = 32; // t -> t
-	asciiToSdcii['u'] = 33; // u -> u
-	asciiToSdcii['v'] = 34; // v -> v
-	asciiToSdcii['w'] = 35; // w -> w
-	asciiToSdcii['x'] = 36; // x -> x
-	asciiToSdcii['y'] = 37; // y -> y
-	asciiToSdcii['z'] = 38; // z -> z
-
-	// Numbers
-	asciiToSdcii['0'] = 39; // 0 -> 0
-	asciiToSdcii['1'] = 40; // 1 -> 1
-	asciiToSdcii['2'] = 41; // 2 -> 2
-	asciiToSdcii['3'] = 42; // 3 -> 3
-	asciiToSdcii['4'] = 43; // 4 -> 4
-	asciiToSdcii['5'] = 44; // 5 -> 5
-	asciiToSdcii['6'] = 45; // 6 -> 6
-	asciiToSdcii['7'] = 46; // 7 -> 7
-	asciiToSdcii['8'] = 47; // 8 -> 8
-	asciiToSdcii['9'] = 48; // 9 -> 9
-
-
-	//asciiToSdcii[8] = 70; // backspace -> backspace
-
-
-	sdciiToAscii[13] = 'a'; // a -> a
-	sdciiToAscii[14] = 'b'; // b -> b
-	sdciiToAscii[15] = 'c'; // c -> c
-	sdciiToAscii[16] = 'd'; // d -> d
-	sdciiToAscii[17] = 'e'; // e -> e
-	sdciiToAscii[18] = 'f'; // f -> f
-	sdciiToAscii[19] = 'g'; // g -> g
-	sdciiToAscii[20] = 'h'; // h -> h
-	sdciiToAscii[21] = 'i'; // i -> i
-	sdciiToAscii[22] = 'j'; // j -> j
-	sdciiToAscii[23] = 'k'; // k -> k
-	sdciiToAscii[24] = 'l'; // l -> l
-	sdciiToAscii[25] = 'm'; // m -> m
-	sdciiToAscii[26] = 'n'; // n -> n
-	sdciiToAscii[27] = 'o'; // o -> o
-	sdciiToAscii[28] = 'p'; // p -> p
-	sdciiToAscii[29] = 'q'; // q -> q
-	sdciiToAscii[30] = 'r'; // r -> r
-	sdciiToAscii[31] = 's'; // s -> s
-	sdciiToAscii[32] = 't'; // t -> t
-	sdciiToAscii[33] = 'u'; // u -> u
-	sdciiToAscii[34] = 'v'; // v -> v
-	sdciiToAscii[35] = 'w'; // w -> w
-	sdciiToAscii[36] = 'x'; // x -> x
-	sdciiToAscii[37] = 'y'; // y -> y
-	sdciiToAscii[38] = 'z'; // z -> z
-
-
-	sdciiToAscii[0] = ' '; // space -> space
-
-
-	sdciiToAscii[85] = '\n'; // newline -> newline
-
-	// Number
-	sdciiToAscii[39] = '0'; // 0 -> 0
-	sdciiToAscii[40] = '1'; // 1 -> 1
-	sdciiToAscii[41] = '2'; // 2 -> 2
-	sdciiToAscii[42] = '3'; // 3 -> 3 
-	sdciiToAscii[43] = '4'; // 4 -> 4
-	sdciiToAscii[44] = '5'; // 5 -> 5
-	sdciiToAscii[45] = '6'; // 6 -> 6
-	sdciiToAscii[46] = '7'; // 7 -> 7
-	sdciiToAscii[47] = '8'; // 8 -> 8
-	sdciiToAscii[48] = '9'; // 9 -> 9
-
-	sdciiToAscii[54] = '.'; // . -> .
-}
-
 pub fn a8colToRgb(col: u16) [3]u16{return[3]u16{((col>>10)&0b11111)*8,((col>>5)&0b11111)*8,(col&0b11111)*8};}
+
 pub fn a8charToAscii(mem: u16) u8 {
     return switch (mem&255) {
         0 => ' ',
@@ -161,6 +42,43 @@ pub fn a8charToAscii(mem: u16) u8 {
         68 => '=',
         else => undefined
     };
+}
+
+pub fn asciiToA8Char(char: u8) u8 {
+	return switch (char) {
+		' ' => 0,
+		'+' => 3,
+        '-' => 4,
+        'x' => 5,
+        '/' => 6,
+        '_' => 8,
+        '<' => 9,
+        '>' => 10,
+        '|' => 11,
+		'A'...'Z' => 13+char-'A',
+		'0'...'9' => 39+char-'0',
+		'?' => 49,
+        '!' => 50,
+        '#' => 51,
+        '$' => 52,
+        '%' => 53,
+        '.' => 54,
+        ',' => 55,
+        ':' => 56,
+        ';' => 57,
+        '(' => 58,
+        ')' => 59,
+        '[' => 60,
+        ']' => 61,
+        '{' => 62,
+        '}' => 63,
+        '"' => 64,
+        '\'' => 65,
+        '*' => 66,
+        '^' => 67,
+        '=' => 68,
+		else => 168
+	};
 }
 
 pub fn printScreen(a8: A8) void {

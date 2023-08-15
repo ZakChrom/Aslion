@@ -39,6 +39,7 @@ fn run(filename: []const u8) !void {
     defer speedarray.deinit();
 
 	ray.InitWindow(width, height, "Aslion");
+	ray.SetTargetFPS(60);
 
 	var rtexture = ray.LoadRenderTexture(108, 108);
 
@@ -103,18 +104,35 @@ fn run(filename: []const u8) !void {
 		} else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_RIGHT)) {
 			a8.memory[1][53501] = 32768 ^ a8.memory[1][53501];
 		}
+
+		var key = ray.GetCharPressed();
+		if (key == 0) {
+			a8.memory[1][53500] = 168;
+			if (ray.IsKeyPressed(ray.KEY_RIGHT)) {
+				a8.memory[1][53500] = 10;
+			} else if (ray.IsKeyPressed(ray.KEY_LEFT)) {
+				a8.memory[1][53500] = 9;
+			} else if (ray.IsKeyPressed(ray.KEY_DOWN)) {
+				a8.memory[1][53500] = 72;
+			} else if (ray.IsKeyPressed(ray.KEY_UP)) {
+				a8.memory[1][53500] = 71;
+			}
+		} else {
+			a8.memory[1][53500] = display.asciiToA8Char(@as(u8, @intCast(key&255)));
+		}
 		
 		ray.BeginDrawing();
 			ray.ClearBackground(ray.RAYWHITE);
 			ray.DrawFPS(0, 0);
 			ray.DrawText((try std.fmt.allocPrint(
 				std.heap.page_allocator,
-				"PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}",
+				"PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}",
 				.{
 					a8.program_counter,
 					a8.a, a8.b, a8.c,
 					x, y, pix,
-					mhz, avg
+					mhz, avg,
+					a8.memory[1][53500], @as(u8, @intCast(key&255))
 				}
 			)).ptr, 0, 19, 19, ray.PURPLE);
 			ray.DrawTextureEx(rtexture.texture, .{.x = 108*4, .y = 0}, 0, 4, ray.WHITE);
