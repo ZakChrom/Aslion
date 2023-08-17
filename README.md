@@ -7,12 +7,12 @@ $ ./aslion file.asm
 ```
 
 ## Features implemented
-You can drop files to the emulator
-Keyboard (barely working :skull:)
+You can drop files to the emulator<br>
+Keyboard (barely working :skull:)<br>
 Mouse
 
 ## Features currently not present
-Sound
- Filesystem
+Sound<br>
+Filesystem
 
 ### I use zig version 0.12.0-dev.25+36c57c3ba to build this
