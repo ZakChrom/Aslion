@@ -11,6 +11,7 @@
 
 const std = @import("std");
 const A8 = @import("a8.zig");
+const convertFile = @import("astrisc2x86.zig").convertFile;
 const display = @import("display.zig");
 const ray = @cImport({
 	@cInclude("raylib.h");
@@ -29,6 +30,7 @@ pub fn main() !void {
 
 /// The emulator ig
 fn run(filename: []const u8) !void {
+	try convertFile(filename);
 	var a8 = try A8.initFile(filename);
 	var pixels: [108*108]u32 = [_]u32{0}**(108*108);
 	const width = 108*4*2;

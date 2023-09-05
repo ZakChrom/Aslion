@@ -44,13 +44,13 @@ pub const Instruction = enum(u5) {
     LDWB
 };
 
-/// Just a struct for config stuff
-pub const Config = struct {
-    using_keyboard: bool,
-    using_mouse: bool,
-    performance_mode: bool,
-    using_file_system: bool
-};
+// Just a struct for config stuff
+//pub const Config = struct {
+//    using_keyboard: bool,
+//    using_mouse: bool,
+//    performance_mode: bool,
+//    using_file_system: bool
+//};
 
 a: u16 = 0,
 b: u16 = 0,
@@ -59,12 +59,12 @@ bank: u16 = 0,
 program_counter: u16 = 0,
 flags: [2]bool = [2]bool{false, false},
 vbuf: bool = false,
-config: Config = Config {
-    .using_keyboard = false,
-    .using_mouse = false,
-    .performance_mode = false,
-    .using_file_system = false
-},
+//config: Config = Config {
+//    .using_keyboard = false,
+//    .using_mouse = false,
+//    .performance_mode = false,
+//    .using_file_system = false
+//},
 memory: [NUMBER_OF_BANKS][UINT16_MAX]u16 = [_][UINT16_MAX]u16{[_]u16{0}**UINT16_MAX}**NUMBER_OF_BANKS,
 
 /// Same as init() but with file
@@ -112,11 +112,11 @@ pub fn init(assembly: []u8) Self {
             }
         };
 
-        var dataa: u11 = 0;
+        var arg: u11 = 0;
         if (!std.mem.eql(u8, line, data_s[0])) {
-            dataa = @intCast(data[1]);
+            arg = @intCast(data[1]);
         }
-        a8.memory[0][a8.program_counter] = (@as(u16, @intCast(inst))<<11)|dataa;
+        a8.memory[0][a8.program_counter] = (@as(u16, @intCast(inst))<<11)|arg;
         a8.program_counter += 1;
     }
     a8.program_counter = 0;
