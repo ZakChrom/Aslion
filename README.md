@@ -1,5 +1,5 @@
 <p align="center">
-<img src="" height=170/>
+<img src="https://raw.githubusercontent.com/ZakChrom/Aslion/main/Aslion.png" height=170/>
 </p>
 <h1 align="center">Aslion</h1>
 
