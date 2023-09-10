@@ -1,4 +1,7 @@
-# ![Icon](Aslion.png "Icon")Aslion
+<p align="center">
+# ![Icon](Aslion.png "Icon")
+# Aslion
+</p>
 ### Aslion is a [Astro8 Emulator](https://github.com/sam-astro/Astro8-Computer)
 
 ## Usage
