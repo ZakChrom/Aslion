@@ -10,17 +10,17 @@
 $ zig build run -- file.asm
 ```
 
-## Desktop application thingy
+### Desktop application thingy
 ```console
 $ sudo ./install.sh
 ```
 
-## Features implemented
+## Features
+### Implemented
 You can drop files to the emulator<br>
 Keyboard (barely working :skull:)<br>
 Mouse
-
-## Features currently not present
+### Currently not present
 Sound<br>
 Filesystem
 
