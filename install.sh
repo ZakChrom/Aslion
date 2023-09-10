@@ -14,4 +14,4 @@ echo "Icon=/usr/share/icons/Aslion.png" >> Aslion.desktop
 echo "Terminal=true" >> Aslion.desktop
 echo "Categories=Other" >> Aslion.desktop
 
-cp Aslion.desktop /usr/share/applications
+mv Aslion.desktop /usr/share/applications
