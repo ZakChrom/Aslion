@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Aslion
+Comment=Astro8 Emulator by Calion
+Path=/home/calion/Programming/Aslion
+Exec=aslion ./asm/triangle.asm
+Icon=/usr/share/icons/Aslion.png
+Terminal=true
+Categories=Other
