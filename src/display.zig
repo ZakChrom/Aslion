@@ -5,10 +5,12 @@ const A8 = @import("a8.zig");
 //    @cInclude("stb_image_write.h");
 //});
 
-pub fn a8colToRgb(col: u16) [3]u16{return[3]u16{((col>>10)&0b11111)*8,((col>>5)&0b11111)*8,(col&0b11111)*8};}
+pub fn a8colToRgb(col: u16) [3]u16 {
+    return [3]u16{ ((col >> 10) & 0b11111) * 8, ((col >> 5) & 0b11111) * 8, (col & 0b11111) * 8 };
+}
 
 pub fn a8charToAscii(mem: u16) u8 {
-    return switch (mem&255) {
+    return switch (mem & 255) {
         0 => ' ',
         3 => '+',
         4 => '-',
@@ -18,8 +20,8 @@ pub fn a8charToAscii(mem: u16) u8 {
         9 => '<',
         10 => '>',
         11 => '|',
-        13...38 => 65+@as(u8, @intCast(mem))-13,
-        39...48 => 48+@as(u8, @intCast(mem))-39,
+        13...38 => 65 + @as(u8, @intCast(mem)) - 13,
+        39...48 => 48 + @as(u8, @intCast(mem)) - 39,
         49 => '?',
         50 => '!',
         51 => '#',
@@ -40,14 +42,14 @@ pub fn a8charToAscii(mem: u16) u8 {
         66 => '*',
         67 => '^',
         68 => '=',
-        else => undefined
+        else => undefined,
     };
 }
 
 pub fn asciiToA8Char(char: u8) u8 {
-	return switch (char) {
-		' ' => 0,
-		'+' => 3,
+    return switch (char) {
+        ' ' => 0,
+        '+' => 3,
         '-' => 4,
         'x' => 5,
         '/' => 6,
@@ -55,9 +57,9 @@ pub fn asciiToA8Char(char: u8) u8 {
         '<' => 9,
         '>' => 10,
         '|' => 11,
-		'A'...'Z' => 13+char-'A',
-		'0'...'9' => 39+char-'0',
-		'?' => 49,
+        'A'...'Z' => 13 + char - 'A',
+        '0'...'9' => 39 + char - '0',
+        '?' => 49,
         '!' => 50,
         '#' => 51,
         '$' => 52,
@@ -77,8 +79,8 @@ pub fn asciiToA8Char(char: u8) u8 {
         '*' => 66,
         '^' => 67,
         '=' => 68,
-		else => 168
-	};
+        else => 168,
+    };
 }
 
 pub fn printScreen(a8: A8) void {
@@ -86,7 +88,7 @@ pub fn printScreen(a8: A8) void {
     for (a8.memory[1][53871..65535], 1..) |mem, i| {
         const col = a8colToRgb(mem);
         if (prevmem != mem) { // TODO: Figure out how do change background color without it breaking
-            std.debug.print("\x1b[38;2;{d};{d};{d}m██", .{col[0], col[1], col[2]});
+            std.debug.print("\x1b[38;2;{d};{d};{d}m██", .{ col[0], col[1], col[2] });
         } else {
             std.debug.print("██", .{});
         }
@@ -113,7 +115,7 @@ pub fn loadCharSetMemTape(filename: []const u8) !void {
     var file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
     var reader = file.reader();
-    
+
     for (0..font.len) |i| {
         font[i] = @intFromBool(try reader.readByte() == '1');
     }
@@ -129,78 +131,76 @@ var img_y: u32 = 0;
 var img_x: u32 = 0;
 
 pub fn Draw(a8: A8, pixels: []u32) void {
-	while (pixel_index < 108*108) {
-		DrawNextPixel(a8, pixels);
-	}
+    while (pixel_index < 108 * 108) {
+        DrawNextPixel(a8, pixels);
+    }
     pixel_index = 0;
 }
 
 pub fn DrawNextPixel(a8: A8, pixels: []u32) void {
-	const char = a8.memory[1][53546+char_index];
-	const p = font[((char&0b11111111)*64)+(char_y*8)+char_x];
-	var colorValue = (char >> 8) & 0b11111111;
-	
+    const char = a8.memory[1][53546 + char_index];
+    const p = font[((char & 0b11111111) * 64) + (char_y * 8) + char_x];
+    var colorValue = (char >> 8) & 0b11111111;
+
     var r: u8 = 0;
     var g: u8 = 0;
     var b: u8 = 0;
-	if (p == 1) {
-		// If the color is set to 0, then make it white, or vice versa.
-		// This is for compatibility with previous program versions, which default the color to 0.
-		if (colorValue == 0) {
-			colorValue = 0b11111111;
+    if (p == 1) {
+        // If the color is set to 0, then make it white, or vice versa.
+        // This is for compatibility with previous program versions, which default the color to 0.
+        if (colorValue == 0) {
+            colorValue = 0b11111111;
         } else if (colorValue == 0b11111111) {
-			colorValue = 0;
+            colorValue = 0;
         }
 
-		r = @truncate(((colorValue>>5)&0b111) * 36 + 0b11);
-		g = @truncate(((colorValue>>2)&0b111) * 36 + 0b11); // 0b00011111
-		b = @truncate((colorValue&0b11) * 85);
-	} else {
-        const col = a8.memory[1][53546+pixel_index + 324];
-        r = @truncate(((col>>10)&0b11111) * 8); // Get first 5 bits
-        g = @truncate(((col>>5)&0b11111) * 8); // get middle bits
-        b = @truncate((col&0b11111) * 8); // Gets last 5 bits
-	}
+        r = @truncate(((colorValue >> 5) & 0b111) * 36 + 0b11);
+        g = @truncate(((colorValue >> 2) & 0b111) * 36 + 0b11); // 0b00011111
+        b = @truncate((colorValue & 0b11) * 85);
+    } else {
+        const col = a8.memory[1][53546 + pixel_index + 324];
+        r = @truncate(((col >> 10) & 0b11111) * 8); // Get first 5 bits
+        g = @truncate(((col >> 5) & 0b11111) * 8); // get middle bits
+        b = @truncate((col & 0b11111) * 8); // Gets last 5 bits
+    }
 
     //pixels[img_y*108+img_x] = (@as(u32, @intCast(r))<<24)|(@as(u32, @intCast(g))<<16)|(@as(u32, @intCast(b))<<8)|0xff;
-    pixels[img_y*108+img_x] = 0xFF000000|(@as(u32, @intCast(b))<<16)|(@as(u32, @intCast(g))<<8)|r;
+    pixels[img_y * 108 + img_x] = 0xFF000000 | (@as(u32, @intCast(b)) << 16) | (@as(u32, @intCast(g)) << 8) | r;
 
+    img_x += 1;
+    char_x += 1;
+    if (char_x >= 6) {
+        char_x = 0;
+        char_index += 1;
+    }
 
-	img_x += 1;
-	char_x += 1;
-	if (char_x >= 6) {
-		char_x = 0;
-		char_index += 1;
-	}
+    // If x-coord is max, reset and increment y-coord
+    if (img_x >= 108) {
+        img_y += 1;
+        char_y += 1;
+        char_x = 0;
+        img_x = 0;
 
-	// If x-coord is max, reset and increment y-coord
-	if (img_x >= 108) {
-		img_y += 1;
-		char_y += 1;
-		char_x = 0;
-		img_x = 0;
+        if (char_y < 6) char_index -= 18;
+    }
 
-		if (char_y < 6) char_index -= 18;
-	}
+    if (char_y >= 6) {
+        char_y = 0;
+    }
 
-	if (char_y >= 6) {
-		char_y = 0;
-	}
+    if (img_y >= 108) {
+        img_y = 0;
 
+        char_index = 0;
+        char_y = 0;
+        char_x = 0;
+    }
 
-	if (img_y >= 108) {
-		img_y = 0;
-
-		char_index = 0;
-		char_y = 0;
-		char_x = 0;
-	}
-
-	pixel_index += 1;
+    pixel_index += 1;
 }
 
 pub fn render(a8: A8, filename: [*c]const u8) void {
-    var pixels: [108*108]u32 = [_]u32{0}**(108*108);
+    var pixels: [108 * 108]u32 = [_]u32{0} ** (108 * 108);
     //for (a8.memory[1][53871..65535], 0..) |mem, i| {
     //    const col = a8colToRgb(mem);
     //    pixels[i] = 0xFF000000|@intCast(u32, col[0])<<16|(@intCast(u32, col[1])<<8)|col[2];
@@ -218,8 +218,8 @@ pub fn render(a8: A8, filename: [*c]const u8) void {
     //}
     Draw(a8, &pixels);
 
-	_ = filename;
-	unreachable;
+    _ = filename;
+    unreachable;
 
     //_ = stb.stbi_write_png(filename, 108, 108, 4, &pixels, @sizeOf(u32)*108);
 }

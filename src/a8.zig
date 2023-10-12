@@ -2,47 +2,14 @@ const std = @import("std");
 const Self = @This();
 
 pub const NUMBER_OF_BANKS = 2;
-pub const UINT16_MAX      = std.math.maxInt(u16);
-pub const UINT11_MASK     = std.math.maxInt(u11);
+pub const UINT16_MAX = std.math.maxInt(u16);
+pub const UINT11_MASK = std.math.maxInt(u11);
 
 /// Every instruction in string form
-pub const astrisc = [_][]const u8{"NOP", "AIN", "BIN", "CIN", "LDIA", "LDIB", "STA", "ADD", "SUB", "MULT", "DIV", "JMP", "JMPZ", "JMPC", "JREG", "LDAIN", "STAOUT", "LDLGE", "STLGE", "LDW", "SWP", "SWPC", "PCR", "BSL", "BSR", "AND", "OR", "NOT", "BNK", "VBUF", "BNKC", "LDWB"};
+pub const astrisc = [_][]const u8{ "NOP", "AIN", "BIN", "CIN", "LDIA", "LDIB", "STA", "ADD", "SUB", "MULT", "DIV", "JMP", "JMPZ", "JMPC", "JREG", "LDAIN", "STAOUT", "LDLGE", "STLGE", "LDW", "SWP", "SWPC", "PCR", "BSL", "BSR", "AND", "OR", "NOT", "BNK", "VBUF", "BNKC", "LDWB" };
 
 /// An enum with every instruction
-pub const Instruction = enum(u5) {
-    NOP,
-    AIN,
-    BIN,
-    CIN,
-    LDIA,
-    LDIB,
-    STA,
-    ADD,
-    SUB,
-    MULT,
-    DIV,
-    JMP,
-    JMPZ,
-    JMPC,
-    JREG,
-    LDAIN,
-    STAOUT,
-    LDLGE,
-    STLGE,
-    LDW,
-    SWP,
-    SWPC,
-    PCR,
-    BSL,
-    BSR,
-    AND,
-    OR,
-    NOT,
-    BNK,
-    VBUF,
-    BNKC,
-    LDWB
-};
+pub const Instruction = enum(u5) { NOP, AIN, BIN, CIN, LDIA, LDIB, STA, ADD, SUB, MULT, DIV, JMP, JMPZ, JMPC, JREG, LDAIN, STAOUT, LDLGE, STLGE, LDW, SWP, SWPC, PCR, BSL, BSR, AND, OR, NOT, BNK, VBUF, BNKC, LDWB };
 
 // Just a struct for config stuff
 //pub const Config = struct {
@@ -57,7 +24,7 @@ b: u16 = 0,
 c: u16 = 0,
 bank: u16 = 0,
 program_counter: u16 = 0,
-flags: [2]bool = [2]bool{false, false},
+flags: [2]bool = [2]bool{ false, false },
 vbuf: bool = false,
 //config: Config = Config {
 //    .using_keyboard = false,
@@ -65,13 +32,13 @@ vbuf: bool = false,
 //    .performance_mode = false,
 //    .using_file_system = false
 //},
-memory: [NUMBER_OF_BANKS][UINT16_MAX]u16 = [_][UINT16_MAX]u16{[_]u16{0}**UINT16_MAX}**NUMBER_OF_BANKS,
+memory: [NUMBER_OF_BANKS][UINT16_MAX]u16 = [_][UINT16_MAX]u16{[_]u16{0} ** UINT16_MAX} ** NUMBER_OF_BANKS,
 
 /// Same as init() but with file
 pub fn initFile(filename: []const u8) !Self {
     var file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
-    var buf = try file.readToEndAlloc(std.heap.page_allocator, 1024*1024);
+    var buf = try file.readToEndAlloc(std.heap.page_allocator, 1024 * 1024);
     return init(buf);
 }
 
@@ -116,7 +83,7 @@ pub fn init(assembly: []u8) Self {
         if (!std.mem.eql(u8, line, data_s[0])) {
             arg = @intCast(data[1]);
         }
-        a8.memory[0][a8.program_counter] = (@as(u16, @intCast(inst))<<11)|arg;
+        a8.memory[0][a8.program_counter] = (@as(u16, @intCast(inst)) << 11) | arg;
         a8.program_counter += 1;
     }
     a8.program_counter = 0;
@@ -125,20 +92,20 @@ pub fn init(assembly: []u8) Self {
 
 /// Executes 1 instruction
 pub fn update(self: *Self) void {
-    const instruction: Instruction = @enumFromInt(self.memory[0][self.program_counter]>>11);
-    const data = self.memory[0][self.program_counter]&UINT11_MASK;
+    const instruction: Instruction = @enumFromInt(self.memory[0][self.program_counter] >> 11);
+    const data = self.memory[0][self.program_counter] & UINT11_MASK;
     self.program_counter +%= 1;
     var bus: i32 = 0;
-    
+
     switch (instruction) {
-        .NOP  => {},
-        .AIN  => self.a = self.memory[self.bank][data],
-        .BIN  => self.b = self.memory[self.bank][data],
-        .CIN  => self.c = self.memory[self.bank][data],
+        .NOP => {},
+        .AIN => self.a = self.memory[self.bank][data],
+        .BIN => self.b = self.memory[self.bank][data],
+        .CIN => self.c = self.memory[self.bank][data],
         .LDIA => self.a = data,
         .LDIB => self.b = data,
-        .STA  => self.memory[self.bank][data] = self.a,
-        .ADD  => {
+        .STA => self.memory[self.bank][data] = self.a,
+        .ADD => {
             bus = @as(i32, self.a) + self.b;
             self.flags[1] = false;
             self.flags[0] = bus == 0;
@@ -185,7 +152,7 @@ pub fn update(self: *Self) void {
         },
         .JMP => self.program_counter = self.memory[0][self.program_counter],
         .JMPZ => {
-            if (self.flags[0] == true){
+            if (self.flags[0] == true) {
                 self.program_counter = self.memory[0][self.program_counter];
             } else {
                 self.program_counter +%= 1;
@@ -274,13 +241,13 @@ pub fn update(self: *Self) void {
             }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
-        .BNK => self.bank = data&0b11,
+        .BNK => self.bank = data & 0b11,
         .VBUF => self.vbuf = true,
-        .BNKC => self.bank = self.c&0b11,
+        .BNKC => self.bank = self.c & 0b11,
         .LDWB => {
             self.b = self.memory[0][self.program_counter];
             self.program_counter +%= 1;
-        }
+        },
     }
 }
 
@@ -306,7 +273,7 @@ pub fn update(self: *Self) void {
 //                inst = try std.fmt.allocPrint(std.heap.page_allocator, "{s} {d}", .{
 //                    astrisc[mem>>11],
 //                    mem&UINT11_MASK
-//                });    
+//                });
 //            } else {
 //                inst = try std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{astrisc[mem>>11]});
 //            }
