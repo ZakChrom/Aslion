@@ -12,21 +12,36 @@
 
 const std = @import("std");
 const A8 = @import("a8.zig");
-const convertFile = @import("astrisc2x86.zig").convertFile;
-const display = @import("display.zig");
+const argsParser = @import("args.zig");
+//const convertFile = @import("astrisc2x86.zig").convertFile;
+const utils = @import("utils.zig");
 const ray = @cImport({
     @cInclude("raylib.h");
 });
 
 /// Da main function
-pub fn main() !void {
-    // Get the args and skip the first one (program name)
-    var args = std.process.args();
-    _ = args.skip();
-    std.debug.print("sizeof(A8) = {d} bytes\n", .{@sizeOf(A8)});
+pub fn main() !u8 {
+    const Options = struct {
+        @"no-ui": bool = false,
+        help: bool = false,
+        @"char-set-memtape": []const u8 = "char_set_memtape",
 
-    try display.loadCharSetMemTape("char_set_memtape");
-    try run(args.next().?);
+        pub const shorthands = .{ .n = "no-ui", .h = "help", .c = "char-set-memtape" };
+
+        pub const meta = .{ .option_docs = .{ .@"no-ui" = "Dont display the ui", .help = "Show this text", .@"char-set-memtape" = "The location of char_set_memtape" } };
+    };
+
+    const options = argsParser.parseForCurrentProcess(Options, std.heap.page_allocator, .print) catch return 1;
+    defer options.deinit();
+
+    if (options.options.help or options.positionals.len == 0) {
+        try argsParser.printHelp(Options, options.executable_name orelse "aslion", std.io.getStdOut().writer());
+    } else {
+        std.debug.print("sizeof(A8) = {d} bytes\n", .{@sizeOf(A8)});
+        try utils.loadCharSetMemTape(options.options.@"char-set-memtape");
+        try run(options.positionals[0], options.options.@"no-ui");
+    }
+    return 0;
 }
 
 var freq: f32 = 0;
@@ -44,12 +59,18 @@ fn audio_callback(buffer: ?*anyopaque, frames: c_uint) callconv(.C) void {
     }
 }
 
+var default_config: A8.Config = .{ .using_keyboard = true, .using_mouse = true, .using_file_system = false };
+
 /// The emulator ig
-fn run(filename: []const u8) !void {
-    try convertFile(filename);
+fn run(filename: []const u8, noui: bool) !void {
+    //try convertFile(filename);
     var a8 = try A8.initFile(filename);
+    a8.config = default_config;
     var pixels: [108 * 108]u32 = [_]u32{0} ** (108 * 108);
-    const width = 108 * 4 * 2;
+    var width: i32 = 108 * 4;
+    if (!noui) {
+        width *= 2;
+    }
     const height = 108 * 4;
 
     // Array for average a8 speed
@@ -62,7 +83,7 @@ fn run(filename: []const u8) !void {
     var audio = ray.LoadAudioStream(44100, 16, 1);
     ray.SetAudioStreamCallback(audio, audio_callback);
     ray.PlayAudioStream(audio);
-    ray.SetTargetFPS(60);
+    //ray.SetTargetFPS(60);
 
     var rtexture = ray.LoadRenderTexture(108, 108);
 
@@ -73,7 +94,9 @@ fn run(filename: []const u8) !void {
     var avg: f32 = 0;
     // The amount of instructions we managed to execute in a second
     var i: u64 = 0;
-
+    //var file: std.c.FILE = undefined;
+    //var returning_file_data: bool = false;
+    //var received_path: *const [:0]u8 = "";
     // Timer
     var timer = try std.time.Timer.start();
 
@@ -83,15 +106,18 @@ fn run(filename: []const u8) !void {
 
             const something: [*:0]const u8 = @ptrCast(dropped.paths[0]);
             a8 = try A8.initFile(std.mem.span(something));
+            a8.config = default_config;
 
             ray.UnloadDroppedFiles(dropped);
         }
 
         while (!a8.vbuf) : (i += 1) a8.update();
+
         a8.vbuf = false;
 
-        if (timer.read() >= std.time.ns_per_s) {
-            mhz = (i / 1024) / 1024;
+        var time = timer.read();
+        if (time >= std.time.ns_per_s) {
+            mhz = (i / (time / std.time.ns_per_s) / 1024) / 1024; // When it takes longer than a second to vbuf the mhz will be wrong so we have to divide by time/ns_per_s
             try speedarray.append(mhz);
             var num: f32 = @floatFromInt(speedarray.items.len);
 
@@ -101,49 +127,86 @@ fn run(filename: []const u8) !void {
             }
             avg /= num;
 
+            //std.debug.print("{d} {d}\n", .{ time, i });
+
             timer.reset();
             i = 0;
         }
 
-        display.Draw(a8, &pixels);
+        utils.Draw(a8, &pixels);
         ray.UpdateTexture(rtexture.texture, &pixels);
 
-        var ax: u32 = @intCast(ray.GetMouseX());
-        var ay: u32 = @intCast(ray.GetMouseY());
-        if (ax > 108 * 4) {
-            x = @intCast(@divExact(ax, 4) - 108);
-            y = @intCast(@divExact(ay, 4));
-            pix = pixels[y * 108 + x];
+        if (a8.config.using_mouse) {
+            var ax: u32 = @intCast(ray.GetMouseX());
+            var ay: u32 = @intCast(ray.GetMouseY());
+            if (ax > 108 * 4) {
+                x = @intCast(@divExact(ax, 4) - 108);
+                y = @intCast(@divExact(ay, 4));
+                pix = pixels[y * 108 + x];
+            }
+
+            a8.memory[1][53501] = ((x << 7) | y) | (a8.memory[1][53501] & 0b1100000000000000);
+
+            if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
+                a8.memory[1][53501] = 16384 | a8.memory[1][53501];
+            } else if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_RIGHT)) {
+                a8.memory[1][53501] = 32768 | a8.memory[1][53501];
+            } else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_LEFT)) {
+                a8.memory[1][53501] = 16384 ^ a8.memory[1][53501];
+            } else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_RIGHT)) {
+                a8.memory[1][53501] = 32768 ^ a8.memory[1][53501];
+            }
         }
 
-        a8.memory[1][53501] = ((x << 7) | y) | (a8.memory[1][53501] & 0b1100000000000000);
-
-        if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
-            a8.memory[1][53501] = 16384 | a8.memory[1][53501];
-        } else if (ray.IsMouseButtonDown(ray.MOUSE_BUTTON_RIGHT)) {
-            a8.memory[1][53501] = 32768 | a8.memory[1][53501];
-        } else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_LEFT)) {
-            a8.memory[1][53501] = 16384 ^ a8.memory[1][53501];
-        } else if (ray.IsMouseButtonReleased(ray.MOUSE_BUTTON_RIGHT)) {
-            a8.memory[1][53501] = 32768 ^ a8.memory[1][53501];
-        }
-
-        var key = ray.GetCharPressed();
-        if (key == 0) {
-            a8.memory[1][53500] = 168;
-            if (ray.IsKeyPressed(ray.KEY_RIGHT)) {
-                a8.memory[1][53500] = 10;
-            } else if (ray.IsKeyPressed(ray.KEY_LEFT)) {
-                a8.memory[1][53500] = 9;
-            } else if (ray.IsKeyPressed(ray.KEY_DOWN)) {
-                a8.memory[1][53500] = 72;
-            } else if (ray.IsKeyPressed(ray.KEY_UP)) {
-                a8.memory[1][53500] = 71;
+        var key: c_int = 0;
+        if (a8.config.using_keyboard) {
+            key = ray.GetCharPressed();
+            if (key == 0) {
+                a8.memory[1][53500] = 168;
+                if (ray.IsKeyPressed(ray.KEY_RIGHT)) {
+                    a8.memory[1][53500] = 10;
+                } else if (ray.IsKeyPressed(ray.KEY_LEFT)) {
+                    a8.memory[1][53500] = 9;
+                } else if (ray.IsKeyPressed(ray.KEY_DOWN)) {
+                    a8.memory[1][53500] = 72;
+                } else if (ray.IsKeyPressed(ray.KEY_UP)) {
+                    a8.memory[1][53500] = 71;
+                }
+            } else {
+                a8.memory[1][53500] = utils.asciiToA8Char(@as(u8, @intCast(key & 255)));
             }
         } else {
-            a8.memory[1][53500] = display.asciiToA8Char(@as(u8, @intCast(key & 255)));
+            a8.memory[1][53500] = 168;
         }
 
+        // if (a8.config.using_file_system) {
+        //     var mem = a8.memory[1][53505];
+        //     if (returning_file_data) {
+        //         //
+        //     } else {
+        //         if (mem >= 0b1111000000000000) {
+        //             var ch: u8 = mem & 255;
+        //             if (ch == 85 and file == undefined) {
+        //                 file = std.c.fopen(received_path, "a");
+        //                 received_path = "";
+        //             } else if (ch == 78 and file != undefined) {
+        //                 std.c.fclose(file);
+        //                 file = undefined;
+        //             } else {
+        //                 var ascii = display.a8charToAscii(ch);
+        //                 if (file.is_open()) {
+        //                     std.c.fwrite(ascii, 1, 1, file);
+        //                 } else {
+        //                     var result: [received_path.len + 1]u8 = undefined;
+        //                     std.mem.copy(u8, result[0..], received_path);
+        //                     std.mem.copy(u8, result[received_path.len..], ascii);
+        //                     //received_path += ascii;
+        //                 }
+        //             }
+        //         }
+        //         a8.memory[1][53505] = 0;
+        //     }
+        // }
         ray.BeginDrawing();
         ray.ClearBackground(ray.RAYWHITE);
         ray.DrawFPS(0, 0);

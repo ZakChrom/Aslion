@@ -4,4 +4,6 @@ build.sh
 out
 *.aexe
 *.hex
-Aslion.desktop
+*.txt
+*.yabal
+.vscode

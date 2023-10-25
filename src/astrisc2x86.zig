@@ -43,8 +43,8 @@ pub fn convert(astrisc: []u8) !void {
 
     try put(&s, "LDAIN", "mov ax, [ax]", .NO);
     try put(&s, "STAOUT", "mov [ax], bx", .NO);
-    try put(&s, "LDLGE", "mov ax, %d", .IMMEDIATE);
-    try put(&s, "STLGE", "mov %d, [ax]", .IMMEDIATE);
+    try put(&s, "LDLGE", "mov ax, %d", .IMMEDIATE); // Wrong
+    try put(&s, "STLGE", "mov %d, [ax]", .IMMEDIATE); // Wrong
     try put(&s, "LDW", "mov ax, %d", .IMMEDIATE);
 
     try put(&s, "SWP", "mov cx, ax\n\tmov ax, bx\n\tmov bx, cx", .NO);

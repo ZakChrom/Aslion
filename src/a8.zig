@@ -12,12 +12,7 @@ pub const astrisc = [_][]const u8{ "NOP", "AIN", "BIN", "CIN", "LDIA", "LDIB", "
 pub const Instruction = enum(u5) { NOP, AIN, BIN, CIN, LDIA, LDIB, STA, ADD, SUB, MULT, DIV, JMP, JMPZ, JMPC, JREG, LDAIN, STAOUT, LDLGE, STLGE, LDW, SWP, SWPC, PCR, BSL, BSR, AND, OR, NOT, BNK, VBUF, BNKC, LDWB };
 
 // Just a struct for config stuff
-//pub const Config = struct {
-//    using_keyboard: bool,
-//    using_mouse: bool,
-//    performance_mode: bool,
-//    using_file_system: bool
-//};
+pub const Config = struct { using_keyboard: bool, using_mouse: bool, using_file_system: bool };
 
 a: u16 = 0,
 b: u16 = 0,
@@ -26,13 +21,12 @@ bank: u16 = 0,
 program_counter: u16 = 0,
 flags: [2]bool = [2]bool{ false, false },
 vbuf: bool = false,
-//config: Config = Config {
-//    .using_keyboard = false,
-//    .using_mouse = false,
-//    .performance_mode = false,
-//    .using_file_system = false
-//},
+config: Config = undefined,
 memory: [NUMBER_OF_BANKS][UINT16_MAX]u16 = [_][UINT16_MAX]u16{[_]u16{0} ** UINT16_MAX} ** NUMBER_OF_BANKS,
+
+const c = @cImport({
+    @cInclude("stdio.h");
+});
 
 /// Same as init() but with file
 pub fn initFile(filename: []const u8) !Self {
@@ -96,7 +90,8 @@ pub fn update(self: *Self) void {
     const data = self.memory[0][self.program_counter] & UINT11_MASK;
     self.program_counter +%= 1;
     var bus: i32 = 0;
-
+    var imm = self.memory[0][self.program_counter];
+    //var timer = std.time.Timer.start() catch undefined;
     switch (instruction) {
         .NOP => {},
         .AIN => self.a = self.memory[self.bank][data],
@@ -106,6 +101,16 @@ pub fn update(self: *Self) void {
         .LDIB => self.b = data,
         .STA => self.memory[self.bank][data] = self.a,
         .ADD => {
+            // var temp: i32 = 0;
+            // asm volatile (
+            //     \\addw %[arg2], %[arg1]
+            //     \\adc $0, %[arg1]
+            //     : [bus] "=&{ax}" (bus),
+            //     : [arg1] "{rax}" (self.a),
+            //       [arg2] "{rdi}" (self.b),
+            // );
+            // temp = bus;
+
             bus = @as(i32, self.a) + self.b;
             self.flags[1] = false;
             self.flags[0] = bus == 0;
@@ -113,7 +118,9 @@ pub fn update(self: *Self) void {
                 bus -= 65535;
                 self.flags[1] = true;
             }
+
             self.a = @truncate(@as(u32, @intCast(bus)));
+            // if (temp != bus) std.debug.print("{d} + {d} == {d} | {d}\n", .{ self.a, self.b, temp, bus });
         },
         .SUB => {
             bus = @as(i32, self.a) - self.b;
@@ -150,17 +157,17 @@ pub fn update(self: *Self) void {
             }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
-        .JMP => self.program_counter = self.memory[0][self.program_counter],
+        .JMP => self.program_counter = imm,
         .JMPZ => {
             if (self.flags[0] == true) {
-                self.program_counter = self.memory[0][self.program_counter];
+                self.program_counter = imm;
             } else {
                 self.program_counter +%= 1;
             }
         },
         .JMPC => {
             if (self.flags[1] == true) {
-                self.program_counter = self.memory[0][self.program_counter];
+                self.program_counter = imm;
             } else {
                 self.program_counter +%= 1;
             }
@@ -169,15 +176,15 @@ pub fn update(self: *Self) void {
         .LDAIN => self.a = self.memory[self.bank][self.a],
         .STAOUT => self.memory[self.bank][self.a] = self.b,
         .LDLGE => {
-            self.a = self.memory[self.bank][self.memory[0][self.program_counter]];
+            self.a = self.memory[self.bank][imm];
             self.program_counter +%= 1;
         },
         .STLGE => {
-            self.memory[self.bank][self.memory[0][self.program_counter]] = self.a;
+            self.memory[self.bank][imm] = self.a;
             self.program_counter +%= 1;
         },
         .LDW => {
-            self.a = self.memory[0][self.program_counter];
+            self.a = imm;
             self.program_counter +%= 1;
         },
         .SWP => {
@@ -215,40 +222,37 @@ pub fn update(self: *Self) void {
             bus = self.a & self.b;
             self.flags[1] = false;
             self.flags[0] = bus == 0;
-            while (bus > 65535) {
-                bus -= 65535;
-                self.flags[1] = true;
-            }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
         .OR => {
             bus = self.a | self.b;
             self.flags[1] = false;
             self.flags[0] = bus == 0;
-            while (bus > 65535) {
-                bus -= 65535;
-                self.flags[1] = true;
-            }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
         .NOT => {
             bus = ~self.a;
             self.flags[1] = false;
             self.flags[0] = bus == 0;
-            while (bus > 65535) {
-                bus -= 65535;
-                self.flags[1] = true;
-            }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
-        .BNK => self.bank = data & 0b11,
+        .BNK => {
+            if (data > 4) {
+                std.debug.print("A: {d}, B: {d}, C: {d}, M: {d}\n", .{self.a, self.b, self.c, self.memory[self.bank][data]});
+            } else {
+                self.bank = data & 0b11;
+            }
+        },
         .VBUF => self.vbuf = true,
         .BNKC => self.bank = self.c & 0b11,
         .LDWB => {
-            self.b = self.memory[0][self.program_counter];
+            self.b = imm;
             self.program_counter +%= 1;
         },
     }
+    //var time = timer.read();
+    //_ = c.fprintf(c.stderr, "%s %d\n", @tagName(instruction).ptr, time);
+    //std.debug.print("{s}: {d}ns\n", .{ @tagName(instruction), time });
 }
 
 //test "init" {

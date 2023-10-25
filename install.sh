@@ -13,5 +13,14 @@ echo "Exec=aslion ./asm/triangle.asm" >> Aslion.desktop
 echo "Icon=/usr/share/icons/Aslion.png" >> Aslion.desktop
 echo "Terminal=true" >> Aslion.desktop
 echo "Categories=Other" >> Aslion.desktop
+echo "Actions=raytracer;pong;\n" >> Aslion.desktop
+
+echo "[Desktop Action raytracer]" >> Aslion.desktop
+echo "Name=Run raytracer.asm" >> Aslion.desktop
+echo "Exec=aslion ./asm/raytracer.asm\n" >> Aslion.desktop
+
+echo "[Desktop Action pong]" >> Aslion.desktop
+echo "Name=Run pong.asm" >> Aslion.desktop
+echo "Exec=aslion ./asm/pong.asm" >> Aslion.desktop
 
 mv Aslion.desktop /usr/share/applications
