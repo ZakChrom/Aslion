@@ -137,12 +137,20 @@ fn run(filename: []const u8, noui: bool) !void {
         ray.UpdateTexture(rtexture.texture, &pixels);
 
         if (a8.config.using_mouse) {
-            var ax: u32 = @intCast(ray.GetMouseX());
-            var ay: u32 = @intCast(ray.GetMouseY());
-            if (ax > 108 * 4) {
-                x = @intCast(@divExact(ax, 4) - 108);
-                y = @intCast(@divExact(ay, 4));
-                pix = pixels[y * 108 + x];
+            var ax: i32 = @intCast(ray.GetMouseX());
+            var ay: i32 = @intCast(ray.GetMouseY());
+            if (noui) {
+                if (ax > 0 and ax < 108 * 4 and ay > 0 and ax < 108 * 4) {
+                    x = @intCast(@divExact(ax, 4));
+                    y = @intCast(@divExact(ay, 4));
+                    pix = pixels[y * 108 + x];
+                }
+            } else {
+                if (ax > 108 * 4 and ax < 108 * 8 and ay > 0 and ay < 108 * 8) {
+                    x = @intCast(@divExact(ax, 4) - 108);
+                    y = @intCast(@divExact(ay, 4));
+                    pix = pixels[y * 108 + x];
+                }
             }
 
             a8.memory[1][53501] = ((x << 7) | y) | (a8.memory[1][53501] & 0b1100000000000000);
@@ -208,10 +216,16 @@ fn run(filename: []const u8, noui: bool) !void {
         //     }
         // }
         ray.BeginDrawing();
-        ray.ClearBackground(ray.RAYWHITE);
-        ray.DrawFPS(0, 0);
-        ray.DrawText((try std.fmt.allocPrint(std.heap.page_allocator, "PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}", .{ a8.program_counter, a8.a, a8.b, a8.c, x, y, pix, mhz, avg, a8.memory[1][53500], @as(u8, @intCast(key & 255)) })).ptr, 0, 19, 19, ray.PURPLE);
-        ray.DrawTextureEx(rtexture.texture, .{ .x = 108 * 4, .y = 0 }, 0, 4, ray.WHITE);
+        if (!noui) {
+            ray.ClearBackground(ray.RAYWHITE);
+            ray.DrawFPS(0, 0);
+            ray.DrawText((try std.fmt.allocPrint(std.heap.page_allocator, "PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}", .{ a8.program_counter, a8.a, a8.b, a8.c, x, y, pix, mhz, avg, a8.memory[1][53500], @as(u8, @intCast(key & 255)) })).ptr, 0, 19, 19, ray.PURPLE);
+        }
+        var loc = ray.Vector2{ .x = 108 * 4, .y = 0 };
+        if (noui) {
+            loc.x = 0;
+        }
+        ray.DrawTextureEx(rtexture.texture, loc, 0, 4, ray.WHITE);
         ray.EndDrawing();
     }
 
