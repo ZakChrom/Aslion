@@ -33,49 +33,74 @@ pub fn initFile(filename: []const u8) !Self {
     var file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
     var buf = try file.readToEndAlloc(std.heap.page_allocator, 1024 * 1024);
-    return init(buf);
+    return try init(buf);
 }
 
 /// Initializes the A8 struct with asm
-pub fn init(assembly: []u8) Self {
+pub fn init(assembly: []u8) !Self {
     var a8 = Self{};
     var it1 = std.mem.split(u8, assembly, "\n");
 
+    var variable_map = std.StringHashMap(u16).init(std.heap.page_allocator);
+    defer variable_map.deinit();
+
     while (it1.next()) |line| {
+        if (std.mem.eql(u8, "", line)) continue;
         var it = std.mem.split(u8, line, " ");
-        var data: [3]u16 = undefined;
-        var data_s: [3][]const u8 = undefined;
+        var data: [3]?u16 = undefined;
+        var data_s: [3]?[]const u8 = undefined;
         var i: u16 = 0;
 
         while (it.next()) |e| {
             if (i != 0) {
-                var a = std.fmt.parseUnsigned(u32, e, 10) catch 0;
-                data[i] = if (a > 65535) 65535 else @intCast(a);
+                var a: ?u32 = std.fmt.parseUnsigned(u32, e, 10) catch null;
+                if (a) |aa| {
+                    if (aa > 65535) {
+                        data[i] = 65535;
+                    } else {
+                        data[i] = @intCast(aa);
+                    }
+                } else {
+                    data[i] = null;
+                }
             }
             data_s[i] = e;
             i += 1;
         }
 
-        if (std.mem.eql(u8, data_s[0], "SET")) {
-            a8.memory[0][data[1]] = data[2];
+        if (std.mem.eql(u8, data_s[0].?, "SET")) {
+            a8.memory[0][data[1].?] = data[2].?;
             continue;
         }
 
-        if (std.mem.eql(u8, data_s[0], "HERE")) {
-            a8.memory[0][a8.program_counter] = data[1];
+        if (std.mem.eql(u8, data_s[0].?, "CONST")) {
+            try variable_map.put(data_s[1].?, data[2].?);
+            continue;
+        }
+
+        if (std.mem.eql(u8, data_s[0].?, "HERE")) {
+            a8.memory[0][a8.program_counter] = data[1].?;
             a8.program_counter += 1;
             continue;
         }
 
         var inst: u5 = for (astrisc, 0..) |inst, in| {
-            if (std.mem.eql(u8, data_s[0], inst)) {
+            if (std.mem.eql(u8, data_s[0].?, inst)) {
                 break @intCast(in);
+            }
+            if (in == astrisc.len - 1) {
+                var l = std.mem.split(u8, line, ":");
+                try variable_map.put(l.next().?, a8.program_counter);
             }
         };
 
         var arg: u11 = 0;
-        if (!std.mem.eql(u8, line, data_s[0])) {
-            arg = @intCast(data[1]);
+        if (!std.mem.eql(u8, line, data_s[0].?)) {
+            if (data[1]) |a| {
+                arg = @intCast(a);
+            } else {
+                arg = @intCast(variable_map.get(data_s[1].?).?);
+            }
         }
         a8.memory[0][a8.program_counter] = (@as(u16, @intCast(inst)) << 11) | arg;
         a8.program_counter += 1;
@@ -238,7 +263,7 @@ pub fn update(self: *Self) void {
         },
         .BNK => {
             if (data > 4) {
-                std.debug.print("A: {d}, B: {d}, C: {d}, M: {d}\n", .{self.a, self.b, self.c, self.memory[self.bank][data]});
+                std.debug.print("A: {d}, B: {d}, C: {d}, M: {d}\n", .{ self.a, self.b, self.c, self.memory[self.bank][data] });
             } else {
                 self.bank = data & 0b11;
             }
