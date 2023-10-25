@@ -280,6 +280,33 @@ pub fn update(self: *Self) void {
     //std.debug.print("{s}: {d}ns\n", .{ @tagName(instruction), time });
 }
 
+test "CONST" {
+    var a8 = try Self.init(@constCast(
+        \\CONST smth 69
+        \\LDIA smth
+    ));
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 69);
+}
+
+test "labels" {
+    var a8 = try Self.init(@constCast(
+        \\JMP
+        \\HERE 3
+        \\label:
+        \\VBUF
+        \\AIN label
+        \\JREG
+    ));
+    a8.update();
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.vbuf);
+}
+
 //test "init" {
 //    var a8 = try Self.init("./pong.asm");
 //    var file = try std.fs.cwd().openFile("./pong.asm", .{});
