@@ -25,10 +25,12 @@ pub fn main() !u8 {
         @"no-ui": bool = false,
         help: bool = false,
         @"char-set-memtape": []const u8 = "char_set_memtape",
+        fps: i32 = 0,
+        exit: bool = false,
 
-        pub const shorthands = .{ .n = "no-ui", .h = "help", .c = "char-set-memtape" };
+        pub const shorthands = .{ .n = "no-ui", .h = "help", .c = "char-set-memtape", .f = "fps", .e = "exit" };
 
-        pub const meta = .{ .option_docs = .{ .@"no-ui" = "Dont display the ui", .help = "Show this text", .@"char-set-memtape" = "The location of char_set_memtape" } };
+        pub const meta = .{ .option_docs = .{ .@"no-ui" = "Dont display the ui", .help = "Show this text", .@"char-set-memtape" = "The location of char_set_memtape", .fps = "Limit the framerate. <= 0 is unlimited", .exit = "When the program VBUF's exit" } };
     };
 
     const options = argsParser.parseForCurrentProcess(Options, std.heap.page_allocator, .print) catch return 1;
@@ -39,7 +41,7 @@ pub fn main() !u8 {
     } else {
         std.debug.print("sizeof(A8) = {d} bytes\n", .{@sizeOf(A8)});
         try utils.loadCharSetMemTape(options.options.@"char-set-memtape");
-        try run(options.positionals[0], options.options.@"no-ui");
+        try run(options.positionals[0], options.options.@"no-ui", options.options.fps, options.options.exit);
     }
     return 0;
 }
@@ -62,7 +64,7 @@ fn audio_callback(buffer: ?*anyopaque, frames: c_uint) callconv(.C) void {
 var default_config: A8.Config = .{ .using_keyboard = true, .using_mouse = true, .using_file_system = false };
 
 /// The emulator ig
-fn run(filename: []const u8, noui: bool) !void {
+fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
     //try convertFile(filename);
     var a8 = try A8.initFile(filename);
     a8.config = default_config;
@@ -83,7 +85,10 @@ fn run(filename: []const u8, noui: bool) !void {
     var audio = ray.LoadAudioStream(44100, 16, 1);
     ray.SetAudioStreamCallback(audio, audio_callback);
     ray.PlayAudioStream(audio);
-    //ray.SetTargetFPS(60);
+
+    if (fps > 0) {
+        ray.SetTargetFPS(fps);
+    }
 
     var rtexture = ray.LoadRenderTexture(108, 108);
 
@@ -112,7 +117,7 @@ fn run(filename: []const u8, noui: bool) !void {
         }
 
         while (!a8.vbuf) : (i += 1) a8.update();
-
+        if (exit) break;
         a8.vbuf = false;
 
         var time = timer.read();
