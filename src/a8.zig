@@ -139,7 +139,7 @@ pub fn update(self: *Self) void {
             bus = @as(i32, self.a) + self.b;
             self.flags[1] = false;
             self.flags[0] = bus == 0;
-            while (bus > 65535) {
+            if (bus > 65535) {
                 bus -= 65535;
                 self.flags[1] = true;
             }
@@ -151,7 +151,7 @@ pub fn update(self: *Self) void {
             bus = @as(i32, self.a) - self.b;
             self.flags[1] = true;
             self.flags[0] = bus == 0;
-            while (bus < 0) {
+            if (bus < 0) {
                 bus = 65535 - bus;
                 self.flags[1] = false;
             }
@@ -175,10 +175,6 @@ pub fn update(self: *Self) void {
             } else {
                 self.flags[0] = true;
                 bus = 0;
-            }
-            while (bus > 65535) {
-                bus -= 65535;
-                self.flags[1] = true;
             }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
@@ -280,7 +276,73 @@ pub fn update(self: *Self) void {
     //std.debug.print("{s}: {d}ns\n", .{ @tagName(instruction), time });
 }
 
-test "CONST" {
+test "ADD" {
+    var a8 = try Self.init(@constCast(
+        \\LDIA 0
+        \\LDIB 0
+        \\ADD
+        \\
+        \\LDIA 1
+        \\LDIB 0
+        \\ADD
+        \\
+        \\LDIA 0
+        \\LDIB 1
+        \\ADD
+        \\
+        \\LDIA 1
+        \\LDIB 1
+        \\ADD
+        \\
+        \\LDIB 0
+        \\LDW
+        \\HERE 65535
+        \\ADD
+        \\
+        \\LDIB 1
+        \\LDW
+        \\HERE 65535
+        \\ADD
+        \\
+        \\LDW
+        \\HERE 65535
+        \\SWP
+        \\LDW
+        \\HERE 65535
+        \\ADD
+    ));
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 0);
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 1);
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 1);
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 2);
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 65535);
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 1);
+    a8.update();
+    a8.update();
+    a8.update();
+    a8.update();
+    try std.testing.expect(a8.a == 65535);
+}
+
+test "constants" {
     var a8 = try Self.init(@constCast(
         \\CONST smth 69
         \\LDIA smth
