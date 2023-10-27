@@ -1,7 +1,7 @@
 const std = @import("std");
 const Self = @This();
 
-pub const NUMBER_OF_BANKS = 2;
+pub const NUMBER_OF_BANKS = 6;
 pub const UINT16_MAX = std.math.maxInt(u16);
 pub const UINT11_MASK = std.math.maxInt(u11);
 
@@ -258,11 +258,10 @@ pub fn update(self: *Self) void {
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
         .BNK => {
-            if (data > 4) {
-                std.debug.print("A: {d}, B: {d}, C: {d}, M: {d}\n", .{ self.a, self.b, self.c, self.memory[self.bank][data] });
-            } else {
-                self.bank = data & 0b11;
+            if (data == 5) {
+                std.debug.print("A: {d}, B: {d}, C: {d}\n", .{ self.a, self.b, self.c });
             }
+            self.bank = data;
         },
         .VBUF => self.vbuf = true,
         .BNKC => self.bank = self.c & 0b11,
