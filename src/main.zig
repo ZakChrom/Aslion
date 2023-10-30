@@ -1,14 +1,10 @@
-// TODO: GUI
-// TODO: A menu bar at the top
-// DONE: Implement mouse
-// TODO: Implement keyboard
+// TODO: Fix keyboard
+// TODO: Implement filesystem :skull:
 // TODO: Audio
 // TODO: Make my own renderer instead of copying sam :staring_cat:
-// TODO: Implement filesystem :skull:
 
 // TODO?: Figure out how to store the memory better. Maybe std.ArrayList?
-// There isnt a good way making 2 darray with that tho
-// TODO?: Implement easy way of setting/getting expansion ports. Maybe normal memory too idk
+// There isnt a good way making 2d array with that tho
 
 const std = @import("std");
 const A8 = @import("a8.zig");
