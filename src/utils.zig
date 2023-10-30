@@ -5,8 +5,11 @@ const A8 = @import("a8.zig");
 //    @cInclude("stb_image_write.h");
 //});
 
-pub fn a8colToRgb(col: u16) [3]u16 {
-    return [3]u16{ ((col >> 10) & 0b11111) * 8, ((col >> 5) & 0b11111) * 8, (col & 0b11111) * 8 };
+pub fn a8colToRgb(col: u16) [3]u8 {
+    const r: u8 = @truncate(col >> 10);
+    const g: u8 = @truncate(col >> 5);
+    const b: u8 = @truncate(col);
+    return [3]u8{ (r & 0b11111) * 8, (g & 0b11111) * 8, (b & 0b11111) * 8 };
 }
 
 pub fn a8charToAscii(mem: u16) u8 {
@@ -84,20 +87,32 @@ pub fn asciiToA8Char(char: u8) u8 {
 }
 
 pub fn printScreen(a8: A8) void {
-    var prevmem: u16 = A8.UINT16_MAX;
-    for (a8.memory[1][53871..65535], 1..) |mem, i| {
-        const col = a8colToRgb(mem);
-        if (prevmem != mem) { // TODO: Figure out how do change background color without it breaking
-            std.debug.print("\x1b[38;2;{d};{d};{d}m██", .{ col[0], col[1], col[2] });
-        } else {
-            std.debug.print("██", .{});
+    for (0..108) |y| {
+        for (0..108) |x| {
+            const col1 = a8colToRgb(a8.memory[1][53871 + (y * 108 + x)]);
+            var col2: [3]u8 = [_]u8{ 0, 0, 0 };
+            if (y != 107) {
+                col2 = a8colToRgb(a8.memory[1][53871 + ((y + 1) * 108 + x)]);
+            }
+            std.debug.print("\x1b[48;2;{d};{d};{d}m\x1b[38;2;{d};{d};{d}m▄", .{ col1[0], col1[1], col1[2], col2[0], col2[1], col2[2] });
         }
-        prevmem = mem;
-        if (i % 108 == 0) {
-            std.debug.print("\n", .{});
-        }
+        std.debug.print("\n", .{});
     }
     std.debug.print("\x1b[0m", .{});
+    // var prevmem: u16 = A8.UINT16_MAX;
+    // for (a8.memory[1][53871..65535], 1..) |mem, i| {
+    //     const col = a8colToRgb(mem);
+    //     if (prevmem != mem) { // TODO: Figure out how do change background color without it breaking
+    //         std.debug.print("\x1b[38;2;{d};{d};{d}m██", .{ col[0], col[1], col[2] });
+    //     } else {
+    //         std.debug.print("██", .{});
+    //     }
+    //     prevmem = mem;
+    //     if (i % 108 == 0) {
+    //         std.debug.print("\n", .{});
+    //     }
+    // }
+    // std.debug.print("\x1b[0m", .{});
 }
 pub fn printChars(a8: A8) void {
     for (a8.memory[1][53546..53870], 1..) |mem, i| {

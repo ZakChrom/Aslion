@@ -117,6 +117,7 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
         }
 
         while (!a8.vbuf) : (i += 1) a8.update();
+
         if (exit) break;
         a8.vbuf = false;
 
