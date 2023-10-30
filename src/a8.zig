@@ -115,7 +115,7 @@ pub fn update(self: *Self) void {
     const data = self.memory[0][self.program_counter] & UINT11_MASK;
     self.program_counter +%= 1;
     var bus: i32 = 0;
-    var imm = self.memory[0][self.program_counter];
+
     //var timer = std.time.Timer.start() catch undefined;
     switch (instruction) {
         .NOP => {},
@@ -178,17 +178,17 @@ pub fn update(self: *Self) void {
             }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
-        .JMP => self.program_counter = imm,
+        .JMP => self.program_counter = self.memory[0][self.program_counter],
         .JMPZ => {
             if (self.flags[0] == true) {
-                self.program_counter = imm;
+                self.program_counter = self.memory[0][self.program_counter];
             } else {
                 self.program_counter +%= 1;
             }
         },
         .JMPC => {
             if (self.flags[1] == true) {
-                self.program_counter = imm;
+                self.program_counter = self.memory[0][self.program_counter];
             } else {
                 self.program_counter +%= 1;
             }
@@ -197,15 +197,15 @@ pub fn update(self: *Self) void {
         .LDAIN => self.a = self.memory[self.bank][self.a],
         .STAOUT => self.memory[self.bank][self.a] = self.b,
         .LDLGE => {
-            self.a = self.memory[self.bank][imm];
+            self.a = self.memory[data][self.memory[0][self.program_counter]];
             self.program_counter +%= 1;
         },
         .STLGE => {
-            self.memory[self.bank][imm] = self.a;
+            self.memory[data][self.memory[0][self.program_counter]] = self.a;
             self.program_counter +%= 1;
         },
         .LDW => {
-            self.a = imm;
+            self.a = self.memory[data][self.program_counter];
             self.program_counter +%= 1;
         },
         .SWP => {
@@ -266,7 +266,7 @@ pub fn update(self: *Self) void {
         .VBUF => self.vbuf = true,
         .BNKC => self.bank = self.c & 0b11,
         .LDWB => {
-            self.b = imm;
+            self.b = self.memory[data][self.program_counter];
             self.program_counter +%= 1;
         },
     }
