@@ -64,6 +64,8 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
     //try convertFile(filename);
     var a8 = try A8.initFile(filename);
     a8.config = default_config;
+    a8.memory[1][53500] = 168;
+
     var pixels: [108 * 108]u32 = [_]u32{0} ** (108 * 108);
     var width: i32 = 108 * 4;
     if (!noui) {
