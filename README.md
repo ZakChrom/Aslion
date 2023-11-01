@@ -24,4 +24,4 @@ Mouse
 Sound<br>
 Filesystem
 
-### I use zig version 0.12.0-dev.25+36c57c3ba to build this
+### I use zig version `0.12.0-dev.1349+fa022d1ec` to build this

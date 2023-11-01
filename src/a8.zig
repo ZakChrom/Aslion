@@ -92,6 +92,8 @@ pub fn init(assembly: []u8) !Self {
                 var l = std.mem.split(u8, line, ":");
                 try variable_map.put(l.next().?, a8.program_counter);
             }
+        } else blk: {
+            break :blk 0;
         };
 
         var arg: u11 = 0;
