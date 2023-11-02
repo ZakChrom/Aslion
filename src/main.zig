@@ -1,6 +1,5 @@
-// TODO: Fix keyboard
 // TODO: Implement filesystem :skull:
-// TODO: Audio
+// TODO: Add channels
 // TODO: Make my own renderer instead of copying sam :staring_cat:
 
 // TODO?: Figure out how to store the memory better. Maybe std.ArrayList?
@@ -14,6 +13,95 @@ const utils = @import("utils.zig");
 const ray = @cImport({
     @cInclude("raylib.h");
 });
+
+const keys = [_]u16{
+    ray.KEY_SPACE,
+    ray.KEY_NULL, // TODO: Square
+    ray.KEY_NULL, // TODO: Full square
+    ray.KEY_KP_ADD,
+    ray.KEY_MINUS,
+    ray.KEY_KP_MULTIPLY,
+    ray.KEY_SLASH,
+    ray.KEY_NULL, // TODO: Not filled in square
+    '_',
+    ray.KEY_LEFT,
+    ray.KEY_RIGHT,
+    ray.KEY_NULL, // TODO: Pole
+    ray.KEY_NULL, // TODO: Sideways pole
+    ray.KEY_A,
+    ray.KEY_B,
+    ray.KEY_C,
+    ray.KEY_D,
+    ray.KEY_E,
+    ray.KEY_F,
+    ray.KEY_G,
+    ray.KEY_H,
+    ray.KEY_I,
+    ray.KEY_J,
+    ray.KEY_K,
+    ray.KEY_L,
+    ray.KEY_M,
+    ray.KEY_N,
+    ray.KEY_O,
+    ray.KEY_P,
+    ray.KEY_Q,
+    ray.KEY_R,
+    ray.KEY_S,
+    ray.KEY_T,
+    ray.KEY_U,
+    ray.KEY_V,
+    ray.KEY_W,
+    ray.KEY_X,
+    ray.KEY_Y,
+    ray.KEY_Z,
+    ray.KEY_ZERO,
+    ray.KEY_ONE,
+    ray.KEY_TWO,
+    ray.KEY_THREE,
+    ray.KEY_FOUR,
+    ray.KEY_FIVE,
+    ray.KEY_SIX,
+    ray.KEY_SEVEN,
+    ray.KEY_EIGHT,
+    ray.KEY_NINE,
+    '?',
+    '!',
+    '#',
+    '$',
+    '%',
+    ray.KEY_PERIOD,
+    ray.KEY_COMMA,
+    ':',
+    ';',
+    '(',
+    ')',
+    ray.KEY_LEFT_BRACKET,
+    ray.KEY_RIGHT_BRACKET,
+    '{',
+    '}',
+    '"',
+    '\'',
+    '*',
+    '^',
+    ray.KEY_EQUAL,
+    ray.KEY_NULL, // TODO: Small square
+    ray.KEY_BACKSPACE,
+    ray.KEY_UP,
+    ray.KEY_DOWN,
+    ray.KEY_NULL, // TODO: Not filled circle
+    ray.KEY_NULL, // TODO: Circle
+    ray.KEY_NULL, // TODO: Diagonal \
+    ray.KEY_NULL, // TODO: Diagonal /
+    ray.KEY_NULL, // TODO: _ but up
+    ray.KEY_NULL, // TODO: Grid or smth
+    ray.KEY_NULL, // TODO: Idk
+    ray.KEY_NULL, // TODO: Idk
+    ray.KEY_NULL, // TODO: Idk
+    ray.KEY_NULL, // TODO: Idk
+    ray.KEY_NULL, // TODO: Cursor
+    ray.KEY_NULL, // Something is missing and causes enter to be offset by -1 here so this is to counter that
+    ray.KEY_ENTER,
+};
 
 /// Da main function
 pub fn main() !u8 {
@@ -57,7 +145,7 @@ fn audio_callback(buffer: ?*anyopaque, frames: c_uint) callconv(.C) void {
     }
 }
 
-var default_config: A8.Config = .{ .using_keyboard = true, .using_mouse = true, .using_file_system = false };
+const default_config: A8.Config = .{ .using_keyboard = true, .using_mouse = true, .using_file_system = false, .using_sound = true };
 
 /// The emulator ig
 fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
@@ -170,105 +258,23 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
             }
         }
 
-        const thing = [_]u16{
-            ray.KEY_SPACE,
-            ray.KEY_NULL, // TODO: Square
-            ray.KEY_NULL, // TODO: Full square
-            ray.KEY_KP_ADD,
-            ray.KEY_MINUS,
-            ray.KEY_KP_MULTIPLY,
-            ray.KEY_SLASH,
-            ray.KEY_NULL, // TODO: Not filled in square
-            '_',
-            ray.KEY_LEFT,
-            ray.KEY_RIGHT,
-            ray.KEY_NULL, // TODO: Pole
-            ray.KEY_NULL, // TODO: Sideways pole
-            ray.KEY_A,
-            ray.KEY_B,
-            ray.KEY_C,
-            ray.KEY_D,
-            ray.KEY_E,
-            ray.KEY_F,
-            ray.KEY_G,
-            ray.KEY_H,
-            ray.KEY_I,
-            ray.KEY_J,
-            ray.KEY_K,
-            ray.KEY_L,
-            ray.KEY_M,
-            ray.KEY_N,
-            ray.KEY_O,
-            ray.KEY_P,
-            ray.KEY_Q,
-            ray.KEY_R,
-            ray.KEY_S,
-            ray.KEY_T,
-            ray.KEY_U,
-            ray.KEY_V,
-            ray.KEY_W,
-            ray.KEY_X,
-            ray.KEY_Y,
-            ray.KEY_Z,
-            ray.KEY_ZERO,
-            ray.KEY_ONE,
-            ray.KEY_TWO,
-            ray.KEY_THREE,
-            ray.KEY_FOUR,
-            ray.KEY_FIVE,
-            ray.KEY_SIX,
-            ray.KEY_SEVEN,
-            ray.KEY_EIGHT,
-            ray.KEY_NINE,
-            '?',
-            '!',
-            '#',
-            '$',
-            '%',
-            ray.KEY_PERIOD,
-            ray.KEY_COMMA,
-            ':',
-            ';',
-            '(',
-            ')',
-            ray.KEY_LEFT_BRACKET,
-            ray.KEY_RIGHT_BRACKET,
-            '{',
-            '}',
-            '"',
-            '\'',
-            '*',
-            '^',
-            ray.KEY_EQUAL,
-            ray.KEY_NULL, // TODO: Small square
-            ray.KEY_BACKSPACE,
-            ray.KEY_UP,
-            ray.KEY_DOWN,
-            ray.KEY_NULL, // TODO: Not filled circle
-            ray.KEY_NULL, // TODO: Circle
-            ray.KEY_NULL, // TODO: Diagonal \
-            ray.KEY_NULL, // TODO: Diagonal /
-            ray.KEY_NULL, // TODO: _ but up
-            ray.KEY_NULL, // TODO: Grid or smth
-            ray.KEY_NULL, // TODO: Idk
-            ray.KEY_NULL, // TODO: Idk
-            ray.KEY_NULL, // TODO: Idk
-            ray.KEY_NULL, // TODO: Idk
-            ray.KEY_NULL, // TODO: Cursor
-            ray.KEY_NULL, // Something is missing and causes enter to be offset by -1 here so this is to counter that
-            ray.KEY_ENTER,
-        };
         var key: c_int = 0;
-        a8.memory[1][53500] = 168;
-        var index: u16 = 0;
-        for (thing) |c| {
-            if (c != ray.KEY_NULL) {
-                if (ray.IsKeyDown(c)) {
-                    key = c;
-                    a8.memory[1][53500] = index | (1 << 15);
+        if (a8.config.using_file_system) {
+            a8.memory[1][53500] = 168;
+            var index: u16 = 0;
+            for (keys) |c| {
+                if (c != ray.KEY_NULL) {
+                    if (ray.IsKeyDown(c)) {
+                        key = c;
+                        a8.memory[1][53500] = index | (1 << 15);
+                    }
                 }
+                index += 1;
             }
-            index += 1;
+        }
+
+        if (a8.config.using_sound) {
+            freq = @floatFromInt(utils.a8soundToFreq(@intCast((a8.memory[1][53502] >> 3) & 0b11111)));
         }
 
         // if (a8.config.using_file_system) {

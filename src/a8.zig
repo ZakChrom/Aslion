@@ -12,7 +12,7 @@ pub const astrisc = [_][]const u8{ "NOP", "AIN", "BIN", "CIN", "LDIA", "LDIB", "
 pub const Instruction = enum(u5) { NOP, AIN, BIN, CIN, LDIA, LDIB, STA, ADD, SUB, MULT, DIV, JMP, JMPZ, JMPC, JREG, LDAIN, STAOUT, LDLGE, STLGE, LDW, SWP, SWPC, PCR, BSL, BSR, AND, OR, NOT, BNK, VBUF, BNKC, LDWB };
 
 // Just a struct for config stuff
-pub const Config = struct { using_keyboard: bool, using_mouse: bool, using_file_system: bool };
+pub const Config = struct { using_keyboard: bool, using_mouse: bool, using_file_system: bool, using_sound: bool };
 
 a: u16 = 0,
 b: u16 = 0,
