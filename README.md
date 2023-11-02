@@ -18,7 +18,7 @@ $ sudo ./install.sh
 ## Features
 ### Implemented
 You can drop files to the emulator<br>
-Keyboard (barely working :skull:)<br>
+Keyboard<br>
 Mouse
 ### Currently not present
 Sound<br>

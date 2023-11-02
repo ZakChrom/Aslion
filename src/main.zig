@@ -170,25 +170,105 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
             }
         }
 
+        const thing = [_]u16{
+            ray.KEY_SPACE,
+            ray.KEY_NULL, // TODO: Square
+            ray.KEY_NULL, // TODO: Full square
+            ray.KEY_KP_ADD,
+            ray.KEY_MINUS,
+            ray.KEY_KP_MULTIPLY,
+            ray.KEY_SLASH,
+            ray.KEY_NULL, // TODO: Not filled in square
+            '_',
+            ray.KEY_LEFT,
+            ray.KEY_RIGHT,
+            ray.KEY_NULL, // TODO: Pole
+            ray.KEY_NULL, // TODO: Sideways pole
+            ray.KEY_A,
+            ray.KEY_B,
+            ray.KEY_C,
+            ray.KEY_D,
+            ray.KEY_E,
+            ray.KEY_F,
+            ray.KEY_G,
+            ray.KEY_H,
+            ray.KEY_I,
+            ray.KEY_J,
+            ray.KEY_K,
+            ray.KEY_L,
+            ray.KEY_M,
+            ray.KEY_N,
+            ray.KEY_O,
+            ray.KEY_P,
+            ray.KEY_Q,
+            ray.KEY_R,
+            ray.KEY_S,
+            ray.KEY_T,
+            ray.KEY_U,
+            ray.KEY_V,
+            ray.KEY_W,
+            ray.KEY_X,
+            ray.KEY_Y,
+            ray.KEY_Z,
+            ray.KEY_ZERO,
+            ray.KEY_ONE,
+            ray.KEY_TWO,
+            ray.KEY_THREE,
+            ray.KEY_FOUR,
+            ray.KEY_FIVE,
+            ray.KEY_SIX,
+            ray.KEY_SEVEN,
+            ray.KEY_EIGHT,
+            ray.KEY_NINE,
+            '?',
+            '!',
+            '#',
+            '$',
+            '%',
+            ray.KEY_PERIOD,
+            ray.KEY_COMMA,
+            ':',
+            ';',
+            '(',
+            ')',
+            ray.KEY_LEFT_BRACKET,
+            ray.KEY_RIGHT_BRACKET,
+            '{',
+            '}',
+            '"',
+            '\'',
+            '*',
+            '^',
+            ray.KEY_EQUAL,
+            ray.KEY_NULL, // TODO: Small square
+            ray.KEY_BACKSPACE,
+            ray.KEY_UP,
+            ray.KEY_DOWN,
+            ray.KEY_NULL, // TODO: Not filled circle
+            ray.KEY_NULL, // TODO: Circle
+            ray.KEY_NULL, // TODO: Diagonal \
+            ray.KEY_NULL, // TODO: Diagonal /
+            ray.KEY_NULL, // TODO: _ but up
+            ray.KEY_NULL, // TODO: Grid or smth
+            ray.KEY_NULL, // TODO: Idk
+            ray.KEY_NULL, // TODO: Idk
+            ray.KEY_NULL, // TODO: Idk
+            ray.KEY_NULL, // TODO: Idk
+            ray.KEY_NULL, // TODO: Cursor
+            ray.KEY_NULL, // Something is missing and causes enter to be offset by -1 here so this is to counter that
+            ray.KEY_ENTER,
+        };
         var key: c_int = 0;
-        if (a8.config.using_keyboard) {
-            key = ray.GetCharPressed();
-            if (key == 0) {
-                a8.memory[1][53500] = 168;
-                if (ray.IsKeyPressed(ray.KEY_RIGHT)) {
-                    a8.memory[1][53500] = 10;
-                } else if (ray.IsKeyPressed(ray.KEY_LEFT)) {
-                    a8.memory[1][53500] = 9;
-                } else if (ray.IsKeyPressed(ray.KEY_DOWN)) {
-                    a8.memory[1][53500] = 72;
-                } else if (ray.IsKeyPressed(ray.KEY_UP)) {
-                    a8.memory[1][53500] = 71;
+        a8.memory[1][53500] = 168;
+        var index: u16 = 0;
+        for (thing) |c| {
+            if (c != ray.KEY_NULL) {
+                if (ray.IsKeyDown(c)) {
+                    key = c;
+                    a8.memory[1][53500] = index | (1 << 15);
                 }
-            } else {
-                a8.memory[1][53500] = utils.asciiToA8Char(@as(u8, @intCast(key & 255)));
             }
-        } else {
-            a8.memory[1][53500] = 168;
+            index += 1;
         }
 
         // if (a8.config.using_file_system) {
@@ -223,7 +303,7 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
         if (!noui) {
             ray.ClearBackground(ray.RAYWHITE);
             ray.DrawFPS(0, 0);
-            ray.DrawText((try std.fmt.allocPrint(std.heap.page_allocator, "PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}", .{ a8.program_counter, a8.a, a8.b, a8.c, x, y, pix, mhz, avg, a8.memory[1][53500], @as(u8, @intCast(key & 255)) })).ptr, 0, 19, 19, ray.PURPLE);
+            ray.DrawText((try std.fmt.allocPrint(std.heap.page_allocator, "PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}", .{ a8.program_counter, a8.a, a8.b, a8.c, x, y, pix, mhz, avg, a8.memory[1][53500], @as(u8, @intCast(key)) })).ptr, 0, 19, 19, ray.PURPLE);
         }
         var loc = ray.Vector2{ .x = 108 * 4, .y = 0 };
         if (noui) {
