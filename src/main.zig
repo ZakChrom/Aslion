@@ -259,7 +259,7 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
         }
 
         var key: c_int = 0;
-        if (a8.config.using_file_system) {
+        if (a8.config.using_keyboard) {
             a8.memory[1][53500] = 168;
             var index: u16 = 0;
             for (keys) |c| {
