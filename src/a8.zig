@@ -47,8 +47,8 @@ pub fn init(assembly: []u8) !Self {
     while (it1.next()) |line| {
         if (std.mem.eql(u8, "", line)) continue;
         var it = std.mem.split(u8, line, " ");
-        var data: [3]?u16 = undefined;
-        var data_s: [3]?[]const u8 = undefined;
+        var data: [4]?u16 = [4]?u16{ null, null, null, null };
+        var data_s: [4]?[]const u8 = [4]?[]const u8{ null, null, null, null };
         var i: u16 = 0;
 
         while (it.next()) |e| {
@@ -69,7 +69,11 @@ pub fn init(assembly: []u8) !Self {
         }
 
         if (std.mem.eql(u8, data_s[0].?, "SET")) {
-            a8.memory[0][data[1].?] = data[2].?;
+            var bank: u16 = 0;
+            if (data[3]) |b| {
+                bank = b;
+            }
+            a8.memory[bank][data[1].?] = data[2].?;
             continue;
         }
 
@@ -180,17 +184,17 @@ pub fn update(self: *Self) void {
             }
             self.a = @truncate(@as(u32, @intCast(bus)));
         },
-        .JMP => self.program_counter = self.memory[0][self.program_counter],
+        .JMP => self.program_counter = self.memory[data][self.program_counter],
         .JMPZ => {
             if (self.flags[0] == true) {
-                self.program_counter = self.memory[0][self.program_counter];
+                self.program_counter = self.memory[data][self.program_counter];
             } else {
                 self.program_counter +%= 1;
             }
         },
         .JMPC => {
             if (self.flags[1] == true) {
-                self.program_counter = self.memory[0][self.program_counter];
+                self.program_counter = self.memory[data][self.program_counter];
             } else {
                 self.program_counter +%= 1;
             }
@@ -349,8 +353,6 @@ test "constants" {
         \\LDIA smth
     ));
     a8.update();
-    a8.update();
-    a8.update();
     try std.testing.expect(a8.a == 69);
 }
 
@@ -363,11 +365,25 @@ test "labels" {
         \\AIN label
         \\JREG
     ));
+
     a8.update();
     a8.update();
     a8.update();
     a8.update();
+
     try std.testing.expect(a8.vbuf);
+}
+
+test "set" {
+    var a8 = try Self.init(@constCast(
+        \\SET 420 69
+        \\SET 69 420 1
+    ));
+
+    try std.testing.expect(a8.memory[0][420] == 69);
+
+    try std.testing.expect(a8.memory[0][69] == 0);
+    try std.testing.expect(a8.memory[1][69] == 420);
 }
 
 //test "init" {
