@@ -44,8 +44,11 @@ pub fn init(assembly: []u8) !Self {
     var variable_map = std.StringHashMap(u16).init(std.heap.page_allocator);
     defer variable_map.deinit();
 
-    while (it1.next()) |line| {
-        if (std.mem.eql(u8, "", line)) continue;
+    while (it1.next()) |line1| {
+        var line: []const u8 = line1;
+        if (std.mem.eql(u8, "", line) or line[0] == ',') continue;
+        line = try std.ascii.allocUpperString(std.heap.page_allocator, line);
+
         var it = std.mem.split(u8, line, " ");
         var data: [4]?u16 = [4]?u16{ null, null, null, null };
         var data_s: [4]?[]const u8 = [4]?[]const u8{ null, null, null, null };
@@ -239,7 +242,7 @@ pub fn update(self: *Self) void {
             bus = std.math.shr(u16, self.a, self.b);
             self.flags[1] = false;
             self.flags[0] = bus == 0;
-            while (bus > 65535) {
+            while (bus > 65535) { // TODO: Verify that removing this doesnt break anything
                 bus -= 65535;
                 self.flags[1] = true;
             }

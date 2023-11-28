@@ -1,5 +1,5 @@
 // TODO: Implement filesystem :skull:
-// TODO: Add channels
+// TODO: Add channels to sound
 // TODO: Make my own renderer instead of copying sam :staring_cat:
 
 // TODO?: Figure out how to store the memory better. Maybe std.ArrayList?
@@ -149,7 +149,6 @@ const default_config: A8.Config = .{ .using_keyboard = true, .using_mouse = true
 
 /// The emulator ig
 fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
-    //try convertFile(filename);
     var a8 = try A8.initFile(filename);
     a8.config = default_config;
     a8.memory[1][53500] = 168;

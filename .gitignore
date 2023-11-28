@@ -2,8 +2,9 @@ zig-cache
 zig-out
 build.sh
 out
+hidden
 *.aexe
 *.hex
-*.txt
 *.yabal
+*.arm
 .vscode
