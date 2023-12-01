@@ -232,15 +232,15 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
             var ay: i32 = @intCast(ray.GetMouseY());
             if (noui) {
                 if (ax > 0 and ax < 108 * 4 and ay > 0 and ax < 108 * 4) {
-                    x = @intCast(@divExact(ax, 4));
-                    y = @intCast(@divExact(ay, 4));
-                    pix = pixels[y * 108 + x];
+                    x = @intCast(@divTrunc(ax, 4));
+                    y = @intCast(@divTrunc(ay, 4));
+                    if (x < 108 and y < 108) pix = pixels[y * 108 + x];
                 }
             } else {
                 if (ax > 108 * 4 and ax < 108 * 8 and ay > 0 and ay < 108 * 8) {
-                    x = @intCast(@divExact(ax, 4) - 108);
-                    y = @intCast(@divExact(ay, 4));
-                    pix = pixels[y * 108 + x];
+                    x = @intCast(@divTrunc(ax, 4) - 108);
+                    y = @intCast(@divTrunc(ay, 4));
+                    if (x < 108 and y < 108) pix = pixels[y * 108 + x];
                 }
             }
 
