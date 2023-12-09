@@ -5,6 +5,8 @@
 // TODO?: Figure out how to store the memory better. Maybe std.ArrayList?
 // There isnt a good way making 2d array with that tho
 
+// TODO: Add more tests to a8.zig
+
 const std = @import("std");
 const A8 = @import("a8.zig");
 const argsParser = @import("args.zig");
@@ -103,6 +105,9 @@ const keys = [_]u16{
     ray.KEY_ENTER,
 };
 
+const TIME: bool = A8.TIME;
+const allocator = std.heap.page_allocator;
+
 /// Da main function
 pub fn main() !u8 {
     const Options = struct {
@@ -117,7 +122,7 @@ pub fn main() !u8 {
         pub const meta = .{ .option_docs = .{ .@"no-ui" = "Dont display the ui", .help = "Show this text", .@"char-set-memtape" = "The location of char_set_memtape", .fps = "Limit the framerate. <= 0 is unlimited", .exit = "When the program VBUF's exit" } };
     };
 
-    const options = argsParser.parseForCurrentProcess(Options, std.heap.page_allocator, .print) catch return 1;
+    const options = argsParser.parseForCurrentProcess(Options, allocator, .print) catch return 1;
     defer options.deinit();
 
     if (options.options.help or options.positionals.len == 0) {
@@ -149,7 +154,7 @@ const default_config: A8.Config = .{ .using_keyboard = true, .using_mouse = true
 
 /// The emulator ig
 fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
-    var a8 = try A8.initFile(filename);
+    var a8 = try A8.initFile(filename, allocator);
     a8.config = default_config;
     a8.memory[1][53500] = 168;
 
@@ -161,7 +166,7 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
     const height = 108 * 4;
 
     // Array for average a8 speed
-    var speedarray = std.ArrayList(u64).init(std.heap.page_allocator);
+    var speedarray = std.ArrayList(u64).init(allocator);
     defer speedarray.deinit();
 
     ray.InitWindow(width, height, "Aslion");
@@ -195,7 +200,7 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
             var dropped = ray.LoadDroppedFiles();
 
             const something: [*:0]const u8 = @ptrCast(dropped.paths[0]);
-            a8 = try A8.initFile(std.mem.span(something));
+            a8 = try A8.initFile(std.mem.span(something), allocator);
             a8.config = default_config;
 
             ray.UnloadDroppedFiles(dropped);
@@ -308,7 +313,17 @@ fn run(filename: []const u8, noui: bool, fps: i32, exit: bool) !void {
         if (!noui) {
             ray.ClearBackground(ray.RAYWHITE);
             ray.DrawFPS(0, 0);
-            ray.DrawText((try std.fmt.allocPrint(std.heap.page_allocator, "PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}", .{ a8.program_counter, a8.a, a8.b, a8.c, x, y, pix, mhz, avg, a8.memory[1][53500], @as(u8, @intCast(key)) })).ptr, 0, 19, 19, ray.PURPLE);
+            var text = try std.fmt.allocPrint(allocator, "PCR: {d}\nA B C: {d} {d} {d}\nX Y PIX: {d} {d} {d}\nSPEED: {d} / {d}\nMEM KEY: {d} / {c}", .{ a8.program_counter, a8.a, a8.b, a8.c, x, y, pix, mhz, avg, a8.memory[1][53500], @as(u8, @intCast(key)) });
+            ray.DrawText(text.ptr, 0, 19, 19, ray.PURPLE);
+            allocator.free(text);
+
+            if (TIME) {
+                for (0..31) |inst| {
+                    text = try std.fmt.allocPrint(allocator, "{s}: {d} / {d} / {d}", .{ @tagName(@as(A8.Instruction, @enumFromInt(inst))), a8.times[inst].current, a8.times[inst].max, a8.times[inst].min });
+                    ray.DrawText(text.ptr, 0, @as(c_int, (19 * 5) + (@as(u16, @truncate(inst)) * 10)), 10, ray.PURPLE);
+                    allocator.free(text);
+                }
+            }
         }
         var loc = ray.Vector2{ .x = 108 * 4, .y = 0 };
         if (noui) {
