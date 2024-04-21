@@ -29,7 +29,6 @@ fn main() { unsafe {
         while !a8.vbuf {
             a8.step();
         }
-        panic!();
         //let step_end = step.elapsed().as_millis();
         a8.vbuf = false;
         
