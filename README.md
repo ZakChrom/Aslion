@@ -4,24 +4,34 @@
 <h1 align="center">Aslion</h1>
 
 ### Aslion is a [Astro8 Emulator](https://github.com/sam-astro/Astro8-Computer)
+## This project has fallen for the rewrite it in rust disease. You can find the old verision in the commits
+
+## Comparison
+TLDR: Aslion is 2.48x faster than the original emulator if i did the math correct
+```
+Aslion-Rust: asm/raytracer.asm
+	2.78 min
+
+Aslion: raytracer.asm -e
+	3.35 min old
+	3.48, 3.58, 4.25 min new
+
+Original: ./raytracer.asm -f 999999999
+	6.91 min
+
+Yabal: run raytracer.yabal
+	Never finished. I waited for 15 minutes.
+```
 
 ## Usage
 ```console
-$ zig build run -- file.asm
+$ ./run.sh file.asm
 ```
 
 ### Desktop application thingy
-```console
-$ sudo ./install.sh
-```
+TODO
 
 ## Features
-### Implemented
-You can drop files to the emulator<br>
-Keyboard<br>
-Mouse
-### Currently not present
-Sound<br>
-Filesystem
+TODO
 
-### I use zig version `0.12.0-dev.1349+fa022d1ec` to build this
+### Tested on rustc version `1.78.0-nightly`
