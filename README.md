@@ -4,7 +4,7 @@
 <h1 align="center">Aslion</h1>
 
 ### Aslion is a [Astro8 Emulator](https://github.com/sam-astro/Astro8-Computer)
-## This project has fallen for the rewrite it in rust disease. You can find the old verision in the commits
+#### This project has fallen for the rewrite it in rust disease. You can find the old verision in the commits
 
 ## Comparison
 TLDR: Aslion is 2.48x faster than the original emulator if i did the math correct

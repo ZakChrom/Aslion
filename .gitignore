@@ -1,1 +1,7 @@
 /target
+*.aexe
+*.hex
+*.yabal
+*.arm
+.vscode
+Aslion.desktop
