@@ -27,6 +27,9 @@ extern "C" {
     pub fn BeginTextureMode(target: RenderTexture);
     pub fn EndTextureMode();
     pub fn UpdateTexture(texture: Texture, pixels: *const c_void);
+    pub fn IsFileDropped() -> bool;
+    pub fn LoadDroppedFiles() -> FilePathList;
+    pub fn UnloadDroppedFiles(files: FilePathList);
 }
 
 pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
@@ -161,4 +164,12 @@ pub struct RenderTexture {
     pub id: c_uint,
     pub texture: Texture,
     pub depth: Texture
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct FilePathList {
+    pub capacity: c_uint,
+    pub count: c_uint,
+    pub paths: *const *const c_char
 }
