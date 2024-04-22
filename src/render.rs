@@ -33,7 +33,7 @@ pub fn draw(a8: &A8, pixels: &mut Vec<u32>) {
     let mut x: usize = 0;
     let mut y: usize = 0;
     loop {
-        let char = a8.memory[1][53545 + char_index];
+        let char = a8.memory[1][53546 + char_index];
         let p = font[((char & 0b11111111) * 64) as usize + (char_y * 8) + char_x];
         let mut color_value = (char >> 8) & 0b11111111;
         let mut r: u8 = 0;
