@@ -5,6 +5,9 @@ use std::{collections::HashMap, str::Split, sync::OnceLock};
 const YELLOW: &str = "\x1b[38;2;252;232;3m";
 const RED: &str = "\x1b[38;2;255;0;0m";
 const RESET: &str = "\x1b[0m";
+const ERROR: &str = "\x1b[38;2;255;0;0mError:\x1b[0m";
+const WARNING: &str = "\x1b[38;2;252;232;3mWarning:\x1b[0m";
+
 pub const MAX_BANKS: u16 = 6;
 
 fn astrisc() -> &'static Vec<&'static str> {
@@ -89,67 +92,6 @@ impl Instruction {
     }
 }
 
-// #[inline]
-// fn parse_u16(chunks: &mut Split<'_, &str>, path: &str, line: usize) -> Option<u16> {
-//     if let Some(data) = chunks.next() {
-//         if let Ok(data) = data.parse() { Some(data) } else {
-//             eprintln!("./{}:{}:1: {RED}Error:{RESET} Must be valid u16 number", path, line);
-//             None
-//         }
-//     } else {
-//         eprintln!("./{}:{}:1: {RED}Error:{RESET} Expected argument of type u16", path, line);
-//         None
-//     }
-// }
-
-// #[inline]
-// fn parse_u16_or(chunks: &mut Split<'_, &str>, path: &str, line: usize, or: u16) -> Option<u16> {
-//     if let Some(data) = chunks.next() {
-//         if let Ok(data) = data.parse() { Some(data) } else {
-//             eprintln!("./{}:{}:1: {RED}Error:{RESET} Must be valid u16 number", path, line);
-//             None
-//         }
-//     } else {
-//         Some(or)
-//     }
-// }
-
-// #[inline]
-// fn parse_u32_or(chunks: &mut Split<'_, &str>, path: &str, line: usize, or: u32) -> Option<u32> {
-//     if let Some(data) = chunks.next() {
-//         if let Ok(data) = data.parse() { Some(data) } else {
-//             eprintln!("./{}:{}:1: {RED}Error:{RESET} Must be valid u16 number", path, line);
-//             None
-//         }
-//     } else {
-//         Some(or)
-//     }
-// }
-
-/// Parses a u16. If it fails it returns Err(())
-// macro_rules! parse_u16 {
-//     ( $chunks:expr, $path:expr, $line:expr ) => {
-//         if let Some(d) = parse_u16(&mut $chunks, $path, $line) { d } else { return Err(())}
-//     };
-// }
-
-// /// Parses a u16. If it fails it returns or
-// macro_rules! parse_u16_or {
-//     ( $chunks:expr, $path:expr, $line:expr, $or:expr ) => {
-//         if let Some(d) = parse_u16_or(&mut $chunks, $path, $line, $or) { d } else { return Err(()) }
-//     };
-// }
-
-// /// Parses a u16. If it fails it returns Err(())
-// macro_rules! parse_str {
-//     ( $chunks:expr, $path:expr, $line:expr ) => {
-//         if let Some(var) = $chunks.next() { var } else {
-//             eprintln!("./{}:{}:1: {RED}Error:{RESET} Expected argument of type str", $path, $line);
-//             return Err(())
-//         }
-//     };
-// }
-
 struct ParsingState<'a> {
     /// This also contains labels
     variables: HashMap<String, u16>,
@@ -162,34 +104,10 @@ impl ParsingState<'_> {
         ParsingState {
             path,
             variables: HashMap::new(),
-            line: 1
+            // Line is incremented at the very start of parsing the loop so when its logged it will always be > 0 so it will work correctly
+            line: 0
         }
     }
-
-    // fn get_tokens(&mut self, chunks: &mut Split<'_, &str>) -> Result<Vec<u16>, ()> {
-    //     let mut tokens = Vec::new();
-    //     for chunk in chunks {
-    //         // If its a comment we dont want to keep parsing
-    //         if chunk.starts_with(",") { break; }
-            
-    //         let parsed = chunk.parse::<u32>();
-    //         if parsed.is_err() {
-    //             if let Some(var) = self.variables.get(chunk) {
-    //                 tokens.push(*var);
-    //             } else {
-    //                 eprintln!("./{}:{}:1: {RED}Error:{RESET} Could not find variable \"{}\"", self.path, self.line, chunk);
-    //                 return Err(());
-    //             }
-    //         } else {
-    //             let parsed = parsed.unwrap();
-    //             if parsed > 65535 {
-    //                 eprintln!("./{}:{}:1: {YELLOW}Warning:{RESET} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
-    //             }
-    //             tokens.push((parsed & 0xffff) as u16);
-    //         }
-    //     }
-    //     Ok(tokens)
-    // }
 
     /// Parse next argument as a variable
     #[allow(unused)]
@@ -198,7 +116,7 @@ impl ParsingState<'_> {
         if let Some(var) = self.variables.get(chunk) {
             Some(*var)
         } else {
-            eprintln!("./{}:{}:1: {RED}Error:{RESET} Could not find variable \"{}\"", self.path, self.line, chunk);
+            eprintln!("./{}:{}:1: {ERROR} Could not find variable \"{}\"", self.path, self.line, chunk);
             panic!();
         }
     }
@@ -207,11 +125,11 @@ impl ParsingState<'_> {
         let chunk = chunks.next()?;
         if let Ok(parsed) = chunk.parse::<u32>() {
             if parsed > 65535 {
-                eprintln!("./{}:{}:1: {YELLOW}Warning:{RESET} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
+                eprintln!("./{}:{}:1: {WARNING} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
             }
             Some((parsed & 0xffff) as u16)
         } else {
-            eprintln!("./{}:{}:1: {RED}Error:{RESET} Expected argument of type u16", self.path, self.line);
+            eprintln!("./{}:{}:1: {ERROR} Expected argument of type u16", self.path, self.line);
             panic!();
         }
     }
@@ -224,25 +142,25 @@ impl ParsingState<'_> {
         let chunk = chunks.next()?;
         if let Ok(parsed) = chunk.parse::<u32>() {
             if parsed > 65535 {
-                eprintln!("./{}:{}:1: {YELLOW}Warning:{RESET} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
+                eprintln!("./{}:{}:1: {WARNING} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
             }
             Some((parsed & 0xffff) as u16)
         } else {
             if let Some(var) = self.variables.get(chunk) {
                 Some(*var)
             } else {
-                eprintln!("./{}:{}:1: {RED}Error:{RESET} Could not find variable \"{}\"", self.path, self.line, chunk);
+                eprintln!("./{}:{}:1: {ERROR} Could not find variable \"{}\"", self.path, self.line, chunk);
                 panic!();
             }
         }
     }
 
     fn error(&self, message: String) {
-        eprintln!("./{}:{}:1: {RED}Error:{RESET} {}", self.path, self.line, message);
+        eprintln!("./{}:{}:1: {ERROR} {}", self.path, self.line, message);
     }
 
     fn warning(&self, message: String) {
-        eprintln!("./{}:{}:1: {YELLOW}Warning:{RESET} {}", self.path, self.line, message);
+        eprintln!("./{}:{}:1: {WARNING} {}", self.path, self.line, message);
     }
 }
 
@@ -259,7 +177,6 @@ pub struct A8 {
 }
 
 impl A8 {
-    /// I cant be bothered to wrap the code in unwrap so cry about it
     pub fn new_from_file(path: &str) -> Result<A8, ()> {
         let mut state = ParsingState::new(path);
         let file = std::fs::read_to_string(path).unwrap();
@@ -269,12 +186,12 @@ impl A8 {
 
         let mut counter = 0;
         for line in lines {
+            state.line += 1;
             assert!(counter <= 65535, "Counter is more than 65535 which would segfault. Uhh make ur file smaller idk");
 
             if line == "" || line.starts_with(",") { continue }
             let da_line = line.to_uppercase();
             let mut chunks = da_line.split(" ");
-
             
             // Instructions and the SET & CONST like stuff 
             // We check above if the line is empty so we can unwrap
@@ -319,7 +236,6 @@ impl A8 {
             }
             memory[0][counter] = inst << 11 | (arg & 0b11111111111) as u16;
 
-            state.line += 1;
             counter += 1;
         }
         
