@@ -16,13 +16,16 @@ struct Args {
     #[arg(short, long)]
     file: String,
 
-    /// Fps the emulator should run at. If its 0 (default) it will run as fast as possible
+    /// Fps the emulator should run at. If its 0 it will run as fast as possible
     #[arg(long, default_value_t = 0)]
     fps: i32,
 
+    // clap doesnt add the default thing at the end of the message here for some reason so i added it mannually
+    /// When the program calls the VBUF instruction it will exit [default: false]
     #[arg(short, long, default_value_t = false)]
     exit: bool,
 
+    /// The scale of the screen (the emulator one not program one)
     #[arg(short, long, default_value_t = 8)]
     scale: usize
 }
