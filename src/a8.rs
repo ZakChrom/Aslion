@@ -47,7 +47,10 @@ enum Instruction {
     OR,
     NOT,
     BNK,
-    VBUF,
+    /// SYSCALL 0 is VBUF
+    /// SYSCALL 1 is task add
+    /// SYSCALL 2 is task ret
+    SYSCALL,
     BNKC,
     LDWB
 }
@@ -84,7 +87,7 @@ impl Instruction {
             26 => Instruction::OR,
             27 => Instruction::NOT,
             28 => Instruction::BNK,
-            29 => Instruction::VBUF,
+            29 => Instruction::SYSCALL,
             30 => Instruction::BNKC,
             31 => Instruction::LDWB,
             _ => panic!("Invalid number for conversion"),
@@ -112,44 +115,75 @@ impl ParsingState<'_> {
     /// Parse next argument as a variable
     #[allow(unused)]
     fn next_var(&mut self, chunks: &mut Split<'_, &str>) -> Option<u16> {
-        let chunk = chunks.next()?;
+        let chunk = if let Some(c) = chunks.next() { c } else {
+            self.error("Expected var (str)".to_string());
+            panic!();
+        };
         if let Some(var) = self.variables.get(chunk) {
             Some(*var)
         } else {
-            eprintln!("./{}:{}:1: {ERROR} Could not find variable \"{}\"", self.path, self.line, chunk);
+            self.error(format!("Could not find variable \"{}\"", chunk));
             panic!();
         }
     }
 
     fn next_u16(&mut self, chunks: &mut Split<'_, &str>) -> Option<u16> {
-        let chunk = chunks.next()?;
+        let chunk = if let Some(c) = chunks.next() { c } else {
+            self.error("Expected u16".to_string());
+            panic!();
+        };
         if let Ok(parsed) = chunk.parse::<u32>() {
             if parsed > 65535 {
-                eprintln!("./{}:{}:1: {WARNING} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
+                self.warning(format!("Number bigger than 65535, got: {}. Truncating", parsed));
             }
             Some((parsed & 0xffff) as u16)
         } else {
-            eprintln!("./{}:{}:1: {ERROR} Expected argument of type u16", self.path, self.line);
+            self.error("Expected argument of type u16".to_string());
             panic!();
         }
     }
 
     fn next_str(&mut self, chunks: &mut Split<'_, &str>) -> Option<String> {
-        Some(chunks.next()?.to_string())
+        if let Some(c) = chunks.next() { Some(c.to_string()) } else {
+            self.error("Expected str".to_string());
+            panic!();
+        }
     }
 
     fn next_var_or_u16(&mut self, chunks: &mut Split<'_, &str>) -> Option<u16> {
-        let chunk = chunks.next()?;
+        let chunk = if let Some(c) = chunks.next() { c } else {
+            self.error("Expected var (str) or u16".to_string());
+            panic!();
+        };
         if let Ok(parsed) = chunk.parse::<u32>() {
             if parsed > 65535 {
-                eprintln!("./{}:{}:1: {WARNING} Number bigger than 65535, got: {}. Truncating", self.path, self.line, parsed);
+                self.warning(format!("Number bigger than 65535, got: {}. Truncating", parsed));
             }
             Some((parsed & 0xffff) as u16)
         } else {
             if let Some(var) = self.variables.get(chunk) {
                 Some(*var)
             } else {
-                eprintln!("./{}:{}:1: {ERROR} Could not find variable \"{}\"", self.path, self.line, chunk);
+                self.error(format!("Could not find variable \"{}\"", chunk));
+                panic!();
+            }
+        }
+    }
+
+    // Used for getting the argument for a instruction
+    // Instructions may not have them so u cant use the next_var_or_u16() bcs it reports a error
+    fn next_var_or_u16_dont_expect(&mut self, chunks: &mut Split<'_, &str>) -> Option<u16> {
+        let chunk = chunks.next()?;
+        if let Ok(parsed) = chunk.parse::<u32>() {
+            if parsed > 65535 {
+                self.warning(format!("Number bigger than 65535, got: {}. Truncating", parsed));
+            }
+            Some((parsed & 0xffff) as u16)
+        } else {
+            if let Some(var) = self.variables.get(chunk) {
+                Some(*var)
+            } else {
+                self.error(format!("Could not find variable \"{}\"", chunk));
                 panic!();
             }
         }
@@ -164,6 +198,17 @@ impl ParsingState<'_> {
     }
 }
 
+// TODO: I dont like the name
+// They arent really tasks more like just functions that can return or smth
+pub struct Task {
+    pub a: u16,
+    pub b: u16,
+    pub c: u16,
+    pub bank: u16,
+    pub pc: u16,
+    pub flags: u16
+}
+
 pub struct A8 {
     pub a: u16,
     pub b: u16,
@@ -173,7 +218,8 @@ pub struct A8 {
     /// u2
     pub flags: u16,
     pub vbuf: bool,
-    pub memory: Box<[[u16; 65536]; MAX_BANKS as usize]>
+    pub memory: Box<[[u16; 65536]; MAX_BANKS as usize]>,
+    pub task_stack: Vec<Task>
 }
 
 impl A8 {
@@ -221,18 +267,35 @@ impl A8 {
                     memory[0][counter] = state.next_u16(&mut chunks).unwrap();
                     counter += 1;
                     continue;
+                },
+                "SYSCALL" => {
+                    let num = state.next_u16(&mut chunks).unwrap();
+                    if num > 2047 {
+                        state.error(format!("Number too big. Want: 0 to 2047, got: {}", num));
+                        return Err(())
+                    }
+                    memory[0][counter] = 29 << 11 | num;
+                    counter += 1;
+                    continue;
                 }
                 _ => {}
             }
 
             let inst = if let Some(inst) = astrisc().iter().position(|a| *a == command ) { inst } else {
-                state.error(format!("Unkown instruction: {}", command));
+                state.error(format!("Unknown instruction: {}", command));
                 return Err(())
             } as u16;
 
-            let arg = state.next_var_or_u16(&mut chunks).unwrap_or(0);
+            let arg = state.next_var_or_u16_dont_expect(&mut chunks).unwrap_or(0);
             if arg > 2047 {
-                state.warning(format!("Number too big. Want: 0 to 2047, got: {}. Truncating", arg));
+                if inst == 29 { // VBUF aka SYSCALL 0
+                    // Syscalls should not truncate as that could case weird behavior
+                    // Vbuf shouldnt accpet args anyway so maybe i should just disable args on vbuf or smth
+                    state.error(format!("Number too big. Want: 0 to 2047, got: {}", arg));
+                    return Err(())
+                } else {
+                    state.warning(format!("Number too big. Want: 0 to 2047, got: {}. Truncating", arg));
+                }
             }
             memory[0][counter] = inst << 11 | (arg & 0b11111111111) as u16;
 
@@ -247,8 +310,31 @@ impl A8 {
             pc: 0,
             flags: 0,
             vbuf: false,
-            memory
+            memory,
+            task_stack: vec![]
         })
+    }
+
+    pub fn task_add(&mut self) {
+        assert!(self.task_stack.len() <= 64, "Task stack limit reached (64). This limit is completly arbitrary so if u dont like it complain to Calion :thubm_up:");
+        self.task_stack.push(Task {
+            a: self.a,
+            b: self.b,
+            c: self.c,
+            bank: self.bank,
+            pc: self.pc,
+            flags: self.flags
+        });
+    }
+
+    pub fn task_ret(&mut self) {
+        let task = self.task_stack.pop().unwrap();
+        self.a = task.a;
+        self.b = task.b;
+        self.c = task.c;
+        self.bank = task.bank;
+        self.pc = task.pc;
+        self.flags = task.flags;
     }
 
     pub fn step(&mut self) {
@@ -378,7 +464,16 @@ impl A8 {
                 }
                 self.bank = data;
             },
-            Instruction::VBUF => { self.vbuf = true },
+            Instruction::SYSCALL => {
+                match data {
+                    0 => self.vbuf = true,
+                    1 => self.task_add(),
+                    2 => self.task_ret(),
+                    _ => {
+                        panic!("Invalid syscall {}", data);
+                    }
+                }
+            },
             Instruction::BNKC => { self.bank = self.c % MAX_BANKS },
             Instruction::LDWB => {
                 self.b = self.memory[data as usize][self.pc as usize];

@@ -1,4 +1,4 @@
 #!/bin/sh
 set -xe
 
-RUSTFLAGS="-C target-cpu=native" cargo run -r -- $@
+LD_LIBRARY_PATH="/usr/local/lib/" RUSTFLAGS="-C target-cpu=native -L/usr/local/lib/" cargo run -r -- $@
