@@ -11,7 +11,7 @@ use std::{collections::HashMap, ffi::{c_char, c_int, c_uint, c_void, CStr, CStri
 use a8::A8;
 use keyboard::{handle_keypresses, KeyPress};
 use mouse::handle_mouse;
-use raylib::{BeginDrawing, ClearBackground, CloseWindow, Color, ConfigFlags, DrawFPS, DrawText, DrawTextureEx, EndDrawing, InitWindow, IsFileDropped, IsKeyPressed, LoadDroppedFiles, LoadRenderTexture, SetConfigFlags, SetTargetFPS, SetWindowOpacity, SetWindowSize, UnloadDroppedFiles, UpdateTexture, Vector2, WindowShouldClose, WHITE};
+use raylib::{BeginDrawing, ClearBackground, CloseWindow, Color, ConfigFlags, DrawFPS, DrawText, DrawTextureEx, EndDrawing, InitWindow, IsFileDropped, IsKeyPressed, LoadDroppedFiles, LoadRenderTexture, SetConfigFlags, SetTargetFPS, SetTraceLogLevel, SetWindowOpacity, SetWindowSize, UnloadDroppedFiles, UpdateTexture, Vector2, WindowShouldClose, WHITE};
 use clap::Parser;
 
 use crate::raylib::{GetKeyPressed, GetMouseX, GetMouseY, IsKeyDown, IsKeyReleased, IsKeyUp, IsMouseButtonDown, IsMouseButtonReleased, Key, MouseButton};
@@ -34,7 +34,11 @@ struct Args {
 
     /// The scale of the screen (the emulator one not program one)
     #[arg(short, long, default_value_t = 8)]
-    scale: usize
+    scale: usize,
+
+    // Raylib log level
+    #[arg(short, long, default_value_t = 4)]
+    log_level: i32,
 }
 
 // ChatGPT go brrr
@@ -68,7 +72,7 @@ struct Emulator {
 
 fn main() { unsafe {
     let args = Args::parse();
-    if args.fps < 0 {
+    if args.fps < 0 || args.log_level < 0 {
         panic!("why")
     }
 
@@ -86,6 +90,7 @@ fn main() { unsafe {
     if args.fps != 0 {
         SetTargetFPS(args.fps);
     }
+    SetTraceLogLevel(args.log_level);
 
     let rtexture = LoadRenderTexture(108, 108);
     let mut pixels = vec![0 as u32; 108*108];

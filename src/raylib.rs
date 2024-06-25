@@ -42,6 +42,7 @@ extern "C" {
     pub fn IsKeyReleased(key: c_int) -> bool;
     pub fn IsKeyUp(key: c_int) -> bool;
     pub fn GetKeyPressed() -> c_int;
+    pub fn SetTraceLogLevel(logLevel: i32);
 }
 
 pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
