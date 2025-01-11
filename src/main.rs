@@ -129,8 +129,7 @@ fn main() { unsafe {
 
         let time = timer.elapsed();
         if time >= Duration::SECOND {
-            // 1000000000 is ns per second
-            mhz = (instructions as f64 / (time.as_secs_f64()) / 1024.0) / 1024.0;
+            mhz = (instructions as f64 / time.as_secs_f64() / 1024.0) / 1024.0;
             instructions = 0;
             timer = Instant::now();
         }
