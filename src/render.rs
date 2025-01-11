@@ -9,7 +9,7 @@ const HEIGHT: usize = 108;
 const CHAR_WIDTH: usize = 6;
 const CHAR_HEIGHT: usize = 6;
 
-fn font() -> &'static Vec<bool> {
+pub fn font() -> &'static Vec<bool> {
     static FONT: OnceLock<Vec<bool>> = OnceLock::new();
     FONT.get_or_init(|| {
         let file = include_str!("../char_set_memtape");

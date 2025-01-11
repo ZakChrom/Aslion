@@ -6,6 +6,7 @@ mod raylib;
 mod render;
 mod keyboard;
 mod mouse;
+mod chars_editor;
 
 use std::{collections::HashMap, ffi::{c_char, c_int, c_uint, c_void, CStr, CString}, time::{Duration, Instant}};
 use a8::A8;
@@ -20,7 +21,7 @@ use crate::raylib::{GetKeyPressed, GetMouseX, GetMouseY, IsKeyDown, IsKeyRelease
 #[command(version, about, long_about = None)]
 struct Args {
     /// File path to the asm file
-    #[arg(short, long)]
+    #[arg(short, long, default_value_t = ("".to_string()))]
     file: String,
 
     /// Fps the emulator should run at. If its 0 it will run as fast as possible
@@ -39,6 +40,9 @@ struct Args {
     // Raylib log level
     #[arg(short, long, default_value_t = 4)]
     log_level: i32,
+
+    #[arg(short, long, default_value_t = false)]
+    chars_editor: bool,
 }
 
 // ChatGPT go brrr
@@ -74,6 +78,16 @@ fn main() { unsafe {
     let args = Args::parse();
     if args.fps < 0 || args.log_level < 0 {
         panic!("why")
+    }
+
+    if args.chars_editor {
+        chars_editor::editor();
+        return
+    }
+
+    if args.file == "" {
+        println!("File is not provided :sad:");
+        return
     }
 
     let mut a8 = A8::new_from_file(&args.file).unwrap();
