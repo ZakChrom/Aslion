@@ -47,10 +47,22 @@ enum Instruction {
     OR,
     NOT,
     BNK,
-    /// SYSCALL 0 is VBUF
-    /// SYSCALL 1 is task add
-    /// SYSCALL 2 is task ret
-    SYSCALL,
+    /// I dont like the name but idk what to name it
+    /// Vbuf isnt really a int but whatever
+    /// INT 0 is VBUF for backwards combatability
+    /// 
+    /// INT 1 is int set
+    ///     Reg A: Code used when calling
+    ///     Reg B: Location to jump to if called
+    ///     Does not change any registers
+    /// 
+    /// INT 2 is int call
+    ///     Reg A: Code
+    ///     Does not change any registers
+    /// 
+    /// INT 3 is int ret
+    ///     Resets state to before call (registers, flags and bank)
+    INT,
     BNKC,
     LDWB
 }
@@ -87,7 +99,7 @@ impl Instruction {
             26 => Instruction::OR,
             27 => Instruction::NOT,
             28 => Instruction::BNK,
-            29 => Instruction::SYSCALL,
+            29 => Instruction::INT,
             30 => Instruction::BNKC,
             31 => Instruction::LDWB,
             _ => panic!("Invalid number for conversion"),
@@ -198,15 +210,13 @@ impl ParsingState<'_> {
     }
 }
 
-// TODO: I dont like the name
-// They arent really tasks more like just functions that can return or smth
-pub struct Task {
+pub struct IntThing {
     pub a: u16,
     pub b: u16,
     pub c: u16,
     pub bank: u16,
     pub pc: u16,
-    pub flags: u16
+    pub flags: u16,
 }
 
 pub struct A8 {
@@ -219,7 +229,8 @@ pub struct A8 {
     pub flags: u16,
     pub vbuf: bool,
     pub memory: Box<[[u16; 65536]; MAX_BANKS as usize]>,
-    pub task_stack: Vec<Task>
+    pub int_table: Vec<u16>,
+    pub int_stack: Vec<IntThing>
 }
 
 impl A8 {
@@ -268,7 +279,7 @@ impl A8 {
                     counter += 1;
                     continue;
                 },
-                "SYSCALL" => {
+                "INT" => {
                     let num = state.next_u16(&mut chunks).unwrap();
                     if num > 2047 {
                         state.error(format!("Number too big. Want: 0 to 2047, got: {}", num));
@@ -311,30 +322,9 @@ impl A8 {
             flags: 0,
             vbuf: false,
             memory,
-            task_stack: vec![]
+            int_table: vec![],
+            int_stack: vec![]
         })
-    }
-
-    pub fn task_add(&mut self) {
-        assert!(self.task_stack.len() <= 64, "Task stack limit reached (64). This limit is completly arbitrary so if u dont like it complain to Calion :thubm_up:");
-        self.task_stack.push(Task {
-            a: self.a,
-            b: self.b,
-            c: self.c,
-            bank: self.bank,
-            pc: self.pc,
-            flags: self.flags
-        });
-    }
-
-    pub fn task_ret(&mut self) {
-        let task = self.task_stack.pop().unwrap();
-        self.a = task.a;
-        self.b = task.b;
-        self.c = task.c;
-        self.bank = task.bank;
-        self.pc = task.pc;
-        self.flags = task.flags;
     }
 
     pub fn step(&mut self) {
@@ -464,13 +454,35 @@ impl A8 {
                 }
                 self.bank = data;
             },
-            Instruction::SYSCALL => {
+            Instruction::INT => {
                 match data {
                     0 => self.vbuf = true,
-                    1 => self.task_add(),
-                    2 => self.task_ret(),
+                    1 => {
+                        self.int_table[self.a as usize] = self.b;
+                    },
+                    2 => {
+                        assert!(self.int_stack.len() <= 64, "Int stack limit reached (64). This limit is completly arbitrary so if u dont like it complain to Calion :thubm_up:");
+                        self.int_stack.push(IntThing {
+                            a: self.a,
+                            b: self.b,
+                            c: self.c,
+                            bank: self.bank,
+                            pc: self.pc,
+                            flags: self.flags
+                        });
+                        self.pc = self.int_table[self.a as usize];
+                    },
+                    3 => {
+                        let int_thing = self.int_stack.pop().expect("No int thing in int stack");
+                        self.a = int_thing.a;
+                        self.b = int_thing.b;
+                        self.c = int_thing.c;
+                        self.bank = int_thing.bank;
+                        self.pc = int_thing.pc;
+                        self.flags = int_thing.flags;
+                    }
                     _ => {
-                        panic!("Invalid syscall {}", data);
+                        panic!("Invalid thing code {}", data);
                     }
                 }
             },
