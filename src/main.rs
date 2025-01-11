@@ -68,8 +68,7 @@ unsafe fn unsafe_convert_to_strings(arr_ptr: *const *const c_char) -> Vec<&'stat
 
 struct Emulator {
     ui: bool,
-    xscale: i32,
-    yscale: i32,
+    scale: i32,
     keys: Vec<KeyPress>,
     pressed_keys: Vec<bool>,
 }
@@ -93,14 +92,12 @@ fn main() { unsafe {
     let mut a8 = A8::new_from_file(&args.file).unwrap();
     let mut em = Emulator {
         ui: false,
-        xscale: args.scale as i32,
-        yscale: args.scale as i32,
+        scale: args.scale as i32,
         keys: Vec::new(),
         pressed_keys: vec![false; 512]
     };
 
-    let title = CString::new("Aslion").unwrap();
-    InitWindow(108 * args.scale as c_int, 108 * args.scale as c_int, title.as_ptr());
+    InitWindow(108 * args.scale as c_int, 108 * args.scale as c_int, c"Aslion".as_ptr());
     if args.fps != 0 {
         SetTargetFPS(args.fps);
     }
@@ -141,8 +138,6 @@ fn main() { unsafe {
         // Tab key
         if IsKeyPressed(258) {
             em.ui = !em.ui;
-            em.xscale = args.scale as i32 * if em.ui { 2 } else { 1 };
-            SetWindowSize(108 * em.xscale, 108 * em.yscale);
         }
         
         render::draw(&a8, &mut pixels);
@@ -157,11 +152,11 @@ fn main() { unsafe {
             DrawTextureEx(
                 rtexture.texture,
                 Vector2 {
-                    x: if em.ui { (108.0 * em.xscale as f32) / 2.0 } else { 0.0 },
+                    x: 0.0,
                     y: 0.0
                 },
                 0.0,
-                em.yscale as f32, // TODO: xscale
+                em.scale as f32,
                 WHITE
             );
             if em.ui {
