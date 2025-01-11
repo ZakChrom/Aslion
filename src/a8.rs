@@ -62,6 +62,9 @@ enum Instruction {
     /// 
     /// INT 3 is int ret
     ///     Resets state to before call (registers, flags and bank)
+    /// 
+    /// INT 4 is panic
+    ///     It panic
     INT,
     BNKC,
     LDWB
@@ -229,7 +232,7 @@ pub struct A8 {
     pub flags: u16,
     pub vbuf: bool,
     pub memory: Box<[[u16; 65536]; MAX_BANKS as usize]>,
-    pub int_table: Vec<u16>,
+    pub int_table: HashMap<u16, u16>,
     pub int_stack: Vec<IntThing>
 }
 
@@ -275,7 +278,7 @@ impl A8 {
                     continue
                 },
                 "HERE" => {
-                    memory[0][counter] = state.next_u16(&mut chunks).unwrap();
+                    memory[0][counter] = state.next_var_or_u16(&mut chunks).unwrap();
                     counter += 1;
                     continue;
                 },
@@ -322,7 +325,7 @@ impl A8 {
             flags: 0,
             vbuf: false,
             memory,
-            int_table: vec![],
+            int_table: HashMap::new(),
             int_stack: vec![]
         })
     }
@@ -458,7 +461,7 @@ impl A8 {
                 match data {
                     0 => self.vbuf = true,
                     1 => {
-                        self.int_table[self.a as usize] = self.b;
+                        self.int_table.insert(self.a, self.b);
                     },
                     2 => {
                         assert!(self.int_stack.len() <= 64, "Int stack limit reached (64). This limit is completly arbitrary so if u dont like it complain to Calion :thubm_up:");
@@ -470,7 +473,7 @@ impl A8 {
                             pc: self.pc,
                             flags: self.flags
                         });
-                        self.pc = self.int_table[self.a as usize];
+                        self.pc = *self.int_table.get(&self.a).expect(format!("Interupt {} was not found", self.a).as_str());
                     },
                     3 => {
                         let int_thing = self.int_stack.pop().expect("No int thing in int stack");
@@ -480,9 +483,12 @@ impl A8 {
                         self.bank = int_thing.bank;
                         self.pc = int_thing.pc;
                         self.flags = int_thing.flags;
+                    },
+                    4 => {
+                        panic!("PC: {} A: {} B: {} C: {} F: {} BNK: {} V: {}", self.pc - 1, self.a, self.b, self.c, self.flags, self.bank, self.vbuf)
                     }
                     _ => {
-                        panic!("Invalid thing code {}", data);
+                        panic!("Invalid special instruction type {}", data);
                     }
                 }
             },
