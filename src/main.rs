@@ -108,7 +108,7 @@ fn main() { unsafe {
     
     let mut instructions = 0;
     let mut timer = Instant::now();
-    let mut mhz: u128 = 0;
+    let mut mhz: f64 = 0.0;
 
     while !WindowShouldClose() {
         if IsFileDropped() {
@@ -130,7 +130,7 @@ fn main() { unsafe {
         let time = timer.elapsed();
         if time >= Duration::SECOND {
             // 1000000000 is ns per second
-            mhz = (instructions / (time.as_nanos() / 1000000000) / 1024) / 1024;
+            mhz = (instructions as f64 / (time.as_secs_f64()) / 1024.0) / 1024.0;
             instructions = 0;
             timer = Instant::now();
         }
@@ -161,7 +161,7 @@ fn main() { unsafe {
             );
             if em.ui {
                 DrawFPS(0, 0);
-                let text = CString::new(format!("{}mhz", mhz)).unwrap();
+                let text = CString::new(format!("{:.4}mhz", mhz)).unwrap();
                 DrawText(text.as_ptr(), 0, 22, 20, WHITE);
             }
         EndDrawing();
