@@ -2247,11 +2247,9 @@ bnk 0
 ,
 , change:  '$cursorCount' to '0'
 
-ldia 0
-
-
-stlge
-here 16389
+JMP
+HERE 1192
+NOP
 
 ,
 , == #__IF-ID2__ ==
@@ -2290,3 +2288,10 @@ here 16393
 , goto:    'goto' '59'
 jmp
 here 59
+
+LDIA 0
+STLGE
+HERE 16389
+VBUF
+JMP
+HERE 1174
