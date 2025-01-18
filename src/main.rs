@@ -96,8 +96,6 @@ unsafe fn load_shader() -> bool {
     }
 }
 
-static mut I: usize = 0;
-
 struct Emulator {
     ui: bool,
     scale: i32,
@@ -201,14 +199,14 @@ fn main() { unsafe {
         );
         UpdateTexture(texture, pixels.as_ptr() as *const c_void);
 
+        // TODO: Better keybind
+        if IsKeyPressed(Key::KbMenu as i32) {
+            load_shader();
+        }
+
         BeginDrawing();
             ClearBackground(Color { r: 0x18, g: 0x18, b: 0x18, a: 255 });
 
-            // TODO: Better keybind
-            if IsKeyPressed(Key::KbMenu as i32) {
-                load_shader();
-            }
-            
             BeginShaderMode(shader);
                 let time = GetTime() as f32;
                 SetShaderValue(shader, time_loc, &time as *const f32 as *const c_void, 0);
