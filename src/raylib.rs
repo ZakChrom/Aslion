@@ -10,28 +10,17 @@ extern "C" {
     pub fn BeginDrawing();
     pub fn EndDrawing();
     pub fn ClearBackground(color: Color);
-    pub fn BeginMode3D(camera: Camera);
-    pub fn EndMode3D();
-    pub fn DrawSphere(center_pos: Vector3, radius: f32, color: Color);
     pub fn GetFrameTime() -> f32;
     pub fn SetTargetFPS(fps: c_int);
     pub fn DrawFPS(pos_x: c_int, pos_y: c_int);
     pub fn GetCurrentMonitor() -> c_int;
     pub fn GetMonitorRefreshRate(monitor: c_int) -> c_int;
     pub fn SetConfigFlags(flags: c_uint);
-    pub fn DrawCircle(center_x: c_int, center_y: c_int, radius: f32, color: Color);
-    pub fn DrawCircleV(center: Vector2, radius: f32, color: Color);
-    pub fn GetMouseWheelMove() -> f32;
-    pub fn LoadRenderTexture(width: c_int, height: c_int) -> RenderTexture;
     pub fn DrawTextureEx(texture: Texture, position: Vector2, rotation: f32, scale: f32, tint: Color);
-    pub fn BeginTextureMode(target: RenderTexture);
-    pub fn EndTextureMode();
     pub fn UpdateTexture(texture: Texture, pixels: *const c_void);
     pub fn IsFileDropped() -> bool;
     pub fn LoadDroppedFiles() -> FilePathList;
     pub fn UnloadDroppedFiles(files: FilePathList);
-    pub fn SetWindowSize(width: c_int, height: c_int);
-    pub fn SetWindowOpacity(opacity: f32);
     pub fn IsKeyPressed(key: c_int) -> bool;
     pub fn DrawText(text: *const c_char, posX: c_int, posY: c_int, fontSize: c_int, color: Color);
     pub fn GetMouseX() -> c_int;
@@ -43,33 +32,18 @@ extern "C" {
     pub fn IsKeyUp(key: c_int) -> bool;
     pub fn GetKeyPressed() -> c_int;
     pub fn SetTraceLogLevel(logLevel: i32);
-    pub fn DrawTriangleStrip(points: *const Vector2, pointCount: c_int, color: Color);
-    pub fn DrawLineV(startPos: Vector2, endPod: Vector2, color: Color);
-    pub fn GenMeshPlane(width: f32, length: f32, resX: c_int, resZ: c_int) -> Mesh;
-    pub fn DrawMesh(mesh: Mesh, material: Material, transform: Matrix);
-    pub fn LoadMaterialDefault() -> Material;
-    pub fn MatrixIdentity() -> Matrix;
-    pub fn UpdateCamera(camera: *mut Camera, mode: c_int /* CameraUpdateMode */);
-    pub fn DrawLine3D(startPos: Vector3, endPos: Vector3, color: Color);
-    pub fn DisableCursor();
-    pub fn LoadShader(vsFileName: *const c_char, fsFileName: *const c_char) -> Shader;
     pub fn SetShaderValue(shader: Shader, locIndex: c_int, value: *const c_void, uniformType: c_int);
     pub fn GetShaderLocation(shader: Shader, uniformName: *const c_char) -> c_int;
-    pub fn UploadMesh(mesh: *mut Mesh, dynamic: bool);
-    pub fn UnloadMesh(mesh: Mesh);
-    pub fn UpdateMeshBuffer(mesh: Mesh, index: c_int, data: *const c_void, dataSize: c_int, offset: c_int);
     pub fn GetTime() -> c_double;
-    pub fn Vector3Subtract(v1: Vector3, v2: Vector3) -> Vector3;
-    pub fn Vector3CrossProduct(v1: Vector3, v2: Vector3) -> Vector3;
-    pub fn Vector3Normalize(v1: Vector3) -> Vector3;
-    pub fn DrawTriangle3D(v1: Vector3, v2: Vector3, v3: Vector3, color: Color);
-    pub fn Vector3Add(v1: Vector3, v2: Vector3) -> Vector3;
-    pub fn rlDisableBackfaceCulling();
-    pub fn GetScreenWidth() -> c_int;
-    pub fn GetScreenHeight() -> c_int;
-    pub fn DrawRectangleV(position: Vector2, size: Vector2, color: Color);
     pub fn DrawRectangleLinesEx(rec: Rectangle, lineThick: f32, color: Color); 
     pub fn LoadShaderFromMemory(vsCode: *const c_char, fsCode: *const c_char) -> Shader;
+    pub fn BeginShaderMode(shader: Shader);
+    pub fn EndShaderMode();
+    pub fn UnloadShader(shader: Shader);
+    pub fn UnloadTexture(texture: Texture);
+    pub fn SetShaderValueTexture(shader: Shader, locIndex: c_int, texture: Texture);
+    pub fn LoadTextureFromImage(image: Image) -> Texture;
+    pub fn IsShaderReady(shader: Shader) -> bool;
 }
 
 pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
@@ -435,4 +409,44 @@ pub struct Rectangle {
     pub y: c_float,
     pub w: c_float,
     pub h: c_float
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub enum RlPixelFormat {
+    UncompressedGrayscale = 1,
+    UncompressedGrayAlpha,
+    UncompressedR5G6B5,
+    UncompressedR8G8B8,
+    UncompressedR5G5b5A1,
+    UncompressedR4G4B4A4,
+    UncompressedR8G8B8A8,
+    UncompressedR32,
+    UncompressedR32G32B32,
+    UncompressedR32G32B32A32,
+    UncompressedR16,
+    UncompressedR16G16B16,
+    UncompressedR16G16B16A16,
+    CompressedDxt1Rgb,
+    CompressedDxt1Rgba,
+    CompressedDxt3Rgba,
+    CompressedDxt5Rgba,
+    CompressedEtc1Rgb,
+    CompressedEtc2Rgb,
+    CompressedEtc2EacRgba,
+    CompressedPvrtRgb,
+    CompressedPvrtRgba,
+    CompressedAstc4x4Rgba,
+    CompressedAstc8x8Rgba,
+}
+
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Image {
+    pub data: *mut c_void,
+    pub width: c_int,
+    pub height: c_int,
+    pub mipmaps: c_int,
+    pub format: c_int,
 }
