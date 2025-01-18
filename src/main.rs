@@ -12,7 +12,7 @@ use std::{collections::HashMap, ffi::{c_char, c_int, c_uint, c_void, CStr, CStri
 use a8::A8;
 use keyboard::{handle_keypresses, KeyPress};
 use mouse::handle_mouse;
-use raylib::{BeginDrawing, ClearBackground, CloseWindow, Color, ConfigFlags, DrawFPS, DrawText, DrawTextureEx, EndDrawing, InitWindow, IsFileDropped, IsKeyPressed, LoadDroppedFiles, LoadRenderTexture, SetConfigFlags, SetTargetFPS, SetTraceLogLevel, SetWindowOpacity, SetWindowSize, UnloadDroppedFiles, UpdateTexture, Vector2, WindowShouldClose, WHITE};
+use raylib::{BeginDrawing, BeginShaderMode, ClearBackground, CloseWindow, Color, ConfigFlags, DrawFPS, DrawText, DrawTextureEx, EndDrawing, EndShaderMode, GetShaderLocation, GetTime, Image, InitWindow, IsFileDropped, IsKeyPressed, IsShaderReady, LoadDroppedFiles, LoadShaderFromMemory, LoadTextureFromImage, PixelFormat, SetConfigFlags, SetShaderValue, SetShaderValueTexture, SetTargetFPS, SetTraceLogLevel, Shader, Texture, UnloadDroppedFiles, UnloadShader, UnloadTexture, UpdateTexture, Vector2, WindowShouldClose, WHITE};
 use clap::Parser;
 
 use crate::raylib::{GetKeyPressed, GetMouseX, GetMouseY, IsKeyDown, IsKeyReleased, IsKeyUp, IsMouseButtonDown, IsMouseButtonReleased, Key, MouseButton};
@@ -43,6 +43,10 @@ struct Args {
 
     #[arg(short, long, default_value_t = false)]
     chars_editor: bool,
+
+    // Amount of crt distortion thing. 0.05 is the best but default is 0 because yes
+    #[arg(long, default_value_t = 0.0)]
+    crt: f32,
 }
 
 // ChatGPT go brrr
@@ -65,6 +69,34 @@ unsafe fn unsafe_convert_to_strings(arr_ptr: *const *const c_char) -> Vec<&'stat
     }
     result
 }
+
+#[allow(non_upper_case_globals)]
+static mut shader: Shader = Shader { id: 0, locs: std::ptr::null_mut() };
+#[allow(non_upper_case_globals)]
+static mut font_loc: i32 = 0;
+#[allow(non_upper_case_globals)]
+static mut time_loc: i32 = 0;
+#[allow(non_upper_case_globals)]
+static mut crt_loc: i32 = 0;
+
+unsafe fn load_shader() -> bool {
+    let shader_code = CString::new(std::fs::read("shader.fs").unwrap_or_else(|_| std::fs::read("src/shader.fs").unwrap())).unwrap();
+    let newshader = LoadShaderFromMemory(std::ptr::null(), shader_code.as_ptr());
+    if IsShaderReady(newshader) {
+        UnloadShader(shader);
+        shader = newshader;
+        font_loc = GetShaderLocation(shader, c"font".as_ptr());
+        time_loc = GetShaderLocation(shader, c"time".as_ptr());
+        crt_loc = GetShaderLocation(shader, c"crt_thing".as_ptr());
+        println!("Reloaded shaders");
+        return true
+    } else {
+        println!("Shader borked");
+        return false
+    }
+}
+
+static mut I: usize = 0;
 
 struct Emulator {
     ui: bool,
@@ -97,17 +129,37 @@ fn main() { unsafe {
         pressed_keys: vec![false; 512]
     };
 
+    SetConfigFlags(ConfigFlags::Msaa4xHint as u32);
     InitWindow(108 * args.scale as c_int, 108 * args.scale as c_int, c"Aslion".as_ptr());
     if args.fps != 0 {
         SetTargetFPS(args.fps);
     }
     SetTraceLogLevel(args.log_level);
+    
+    // TODO: Nothing but rgb888 doesnt work. It doesnt update the texture data on the gpu
+    let texture = LoadTextureFromImage(Image {
+        data: std::ptr::null_mut(),
+        width: 108,
+        height: 108,
+        mipmaps: 1,
+        format: PixelFormat::UncompressedR8G8B8A8 as c_int
+    });
 
-    let rtexture = LoadRenderTexture(108, 108);
-    let mut pixels = vec![0 as u32; 108*108];
+    let font_stuff = render::font().clone().iter().map(|e| if *e { u32::MAX } else { 0 }).collect::<Vec<u32>>();
+    let font_len = font_stuff.len();
+    let font_texture = LoadTextureFromImage(Image {
+        data: font_stuff.as_ptr() as *mut c_void,
+        width: font_stuff.len() as i32,
+        height: 1,
+        mipmaps: 1,
+        format: PixelFormat::UncompressedR8G8B8A8 as c_int
+    });
+    drop(font_stuff);
+
+    if !load_shader() { panic!("Cant start with invalid shader") };
     
     let mut instructions = 0;
-    let mut timer = Instant::now();
+    let mut mhz_timer = Instant::now();
     let mut mhz: f64 = 0.0;
 
     while !WindowShouldClose() {
@@ -127,43 +179,64 @@ fn main() { unsafe {
         if args.exit { return }
         a8.vbuf = false;
 
-        let time = timer.elapsed();
-        if time >= Duration::SECOND {
-            mhz = (instructions as f64 / time.as_secs_f64() / 1024.0) / 1024.0;
+        let mhz_time = mhz_timer.elapsed();
+        
+        if mhz_time >= Duration::SECOND {
+            mhz = (instructions as f64 / mhz_time.as_secs_f64() / 1024.0) / 1024.0;
             instructions = 0;
-            timer = Instant::now();
+            mhz_timer = Instant::now();
         }
 
         // Tab key
         if IsKeyPressed(258) {
             em.ui = !em.ui;
         }
-        
-        render::draw(&a8, &mut pixels);
-        UpdateTexture(rtexture.texture, pixels.as_ptr() as *const c_void);
 
         a8.memory[1][53501] = handle_mouse(&em, a8.memory[1][53501]);
         a8.memory[1][53500] = handle_keypresses(&mut em);
 
+        let mut pixels = render::put_pixels_and_chars_into_u32(
+            &a8.memory[1][53870..53870 + (108*108)],
+            &a8.memory[1][53546..53546 + (18*18)]
+        );
+        UpdateTexture(texture, pixels.as_ptr() as *const c_void);
 
         BeginDrawing();
             ClearBackground(Color { r: 0x18, g: 0x18, b: 0x18, a: 255 });
-            DrawTextureEx(
-                rtexture.texture,
-                Vector2 {
-                    x: 0.0,
-                    y: 0.0
-                },
-                0.0,
-                em.scale as f32,
-                WHITE
-            );
+
+            // TODO: Better keybind
+            if IsKeyPressed(Key::KbMenu as i32) {
+                load_shader();
+            }
+            
+            BeginShaderMode(shader);
+                let time = GetTime() as f32;
+                SetShaderValue(shader, time_loc, &time as *const f32 as *const c_void, 0);
+                SetShaderValue(shader, crt_loc, &args.crt as *const f32 as *const c_void, 0);
+                SetShaderValueTexture(shader, font_loc, font_texture);
+                
+                DrawTextureEx(
+                    texture,
+                    Vector2 {
+                        x: 0.0,
+                        y: 0.0
+                    },
+                    0.0,
+                    em.scale as f32,
+                    WHITE
+                );
+            EndShaderMode();
+
             if em.ui {
                 DrawFPS(0, 0);
                 let text = CString::new(format!("{:.4}mhz", mhz)).unwrap();
                 DrawText(text.as_ptr(), 0, 22, 20, WHITE);
             }
+            
         EndDrawing();
     }
+    UnloadShader(shader);
+    UnloadTexture(texture);
+    UnloadTexture(font_texture);
     CloseWindow();
 }}

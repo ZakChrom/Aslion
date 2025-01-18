@@ -44,6 +44,8 @@ extern "C" {
     pub fn SetShaderValueTexture(shader: Shader, locIndex: c_int, texture: Texture);
     pub fn LoadTextureFromImage(image: Image) -> Texture;
     pub fn IsShaderReady(shader: Shader) -> bool;
+    pub fn GetScreenHeight() -> c_int;
+    pub fn DrawRectangleV(position: Vector2, size: Vector2, color: Color);
 }
 
 pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
@@ -413,7 +415,7 @@ pub struct Rectangle {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub enum RlPixelFormat {
+pub enum PixelFormat {
     UncompressedGrayscale = 1,
     UncompressedGrayAlpha,
     UncompressedR5G6B5,
