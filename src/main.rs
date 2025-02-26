@@ -1,6 +1,18 @@
 #![feature(duration_constants)]
 #![allow(unused)]
 
+// Extensions:
+//     16755 - 26755 of bank 5 (both inclusive) are reserved for Aslion
+//     Please dont use them :)
+// 
+//     AslionInterupts;
+//         Docs at Instruction::INT
+//     AslionTime:
+//         16755 of bank 5 is seconds since boot
+//         16756 of bank 5 is ms since boot
+//         16757 of bank 5 is ns since boot
+//         For performance reasons it gets updated every 1000 instructions for now (same as timer interupt)
+
 mod a8;
 mod raylib;
 mod render;
@@ -127,6 +139,14 @@ fn main() { unsafe {
         pressed_keys: vec![false; 512]
     };
 
+    let ptr = &mut a8 as *mut A8 as usize;
+    let default_panic_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let state = &mut *(ptr as *mut A8); // Not like the program will function after this anyway so ill just use raw pointer
+        eprintln!("Panic: PC: {} A: {} B: {} C: {} F: {} BNK: {} V: {}", state.pc - 1, state.a, state.b, state.c, state.flags, state.bank, state.vbuf);
+        default_panic_hook(info);
+    }));
+
     SetConfigFlags(ConfigFlags::Msaa4xHint as u32);
     InitWindow(108 * args.scale as c_int, 108 * args.scale as c_int, c"Aslion".as_ptr());
     if args.fps != 0 {
@@ -156,7 +176,9 @@ fn main() { unsafe {
 
     if !load_shader() { panic!("Cant start with invalid shader") };
     
-    let mut instructions = 0;
+    let mut instructions: u64 = 0;
+    let mut total_instructions: u64 = 0;
+    let mut time = Instant::now();
     let mut mhz_timer = Instant::now();
     let mut mhz: f64 = 0.0;
 
@@ -170,8 +192,20 @@ fn main() { unsafe {
         }
 
         while !a8.vbuf {
+            if total_instructions % 10000 == 9999 {
+                if a8.interupt_saved_state.is_none() {
+                    a8.fire_periodic_interupt();
+                }
+            }
+            if total_instructions % 100 == 99 {
+                let thing = time.elapsed();
+                a8.memory[5][16755] = thing.as_secs() as u16;
+                a8.memory[5][16756] = thing.as_millis() as u16;
+                a8.memory[5][16757] = thing.as_nanos() as u16;
+            }
             a8.step();
             instructions += 1;
+            total_instructions += 1;
         }
 
         if args.exit { return }

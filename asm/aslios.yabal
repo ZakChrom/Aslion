@@ -1,0 +1,177 @@
+const var screen = create_pointer(53870, 1);
+const var chars = create_pointer(53546, 1);
+inline int get_color(int r, int g, int b) => (r / 8 << 10) + (g / 8 << 5) + (b / 8);
+int offset = 0;
+
+int current_task = 10920; // Last ish task
+int total_tasks = 0;
+const var tasks = create_pointer<Task>(0, 4);
+int time_s = create_pointer(16755, 5);
+int time_ms = create_pointer(16756, 5);
+int time_ns = create_pointer(16757, 5);
+const int targetdt = 0;
+int dtms    = 0;
+int last_ms = 0;
+// INTSAVE = 59393
+// INTCALL = 59394
+// INTPOP  = 59395
+// PANIC   = 59396
+// INTRET  = 59397
+
+void interupt() {
+    int ptr = current_task * 6;
+    asm {
+        AIN @ptr
+        BNK 4
+            // pop state
+            HERE 59395
+        BNK 0
+    }
+
+    current_task += 1;
+    current_task = current_task % total_tasks;
+    int ptr = current_task * 6;
+    asm {
+        AIN @ptr
+        BNK 4
+            // set state
+            HERE 59397
+        BNK 0
+    }
+}
+
+void create_task(func<void> task) {
+    tasks[total_tasks].pc = task;
+    total_tasks += 1;
+}
+
+void save_interupt(int code, func<void> func) {
+    asm {
+        AIN @code
+        BIN @func
+        // intsave
+        HERE 59393
+    }
+}
+
+save_interupt(0, interupt); // Periodic (10000 instructions) interupt. Dont call it manually!
+
+create_task(() => {
+    asm {
+        // second task
+        HERE 59396
+    }
+    while (true) {
+        screen[0] = get_color(255, 0, 255);
+    }
+});
+
+create_task(() => {
+    screen[1] = get_color(255, 255, 255);
+    asm {
+        loop:
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        HERE 0
+        VBUF
+        JMP loop
+    }
+    //while (true) {
+    //    offset = 18*0;
+    //    write_int(time_s);
+//
+    //    offset = 18*1;
+    //    write_int(time_ms);
+    //    
+    //    offset = 18*2;
+    //    write_int(time_ns);
+//
+    //    offset = 18*3;
+    //    write_int(dtms);
+//
+    //    //while (dtms < targetdt) {
+    //        dtms = time_ms - last_ms;
+    //    //}
+//
+    //    last_ms = time_ms;
+    //    asm {
+    //        VBUF
+    //    }
+//
+    //    // Yabal optimizes lastms = timems to lastms = 0 bcs it gets changed in assembly
+    //    // So we have to change this in assembly too
+    //    // Also wait until dt is target dt
+//
+    //    for (int i = 0; i < 18*18; i++) {
+    //        chars[i] = 0;
+    //    }
+    //}
+});
+
+// No yield yet so we have to wait for it to switch to anouther task
+// The state of this one should get destroyed
+while (true) {;}
+
+void write(int c) {
+    chars[offset] = c
+    offset++
+}
+
+void write_int(int value) {
+    const var reverser = create_pointer(65530, 0);
+    int i = 0;
+    for (int i = 0; i < 5; i++){
+        reverser[i] = 0;
+    }
+    while (value > 0) {
+        int char = (value % 10) switch {
+            1 => '1',
+            2 => '2',
+            3 => '3',
+            4 => '4',
+            5 => '5',
+            6 => '6',
+            7 => '7',
+            8 => '8',
+            9 => '9',
+            _ => '0'
+        };
+
+        reverser[i] = char;
+        value = value / 10;
+        i += 1;
+    }
+    for (int i = 0; i < 5; i++){
+        write(reverser[4-i]);
+    }
+}
+
+struct Task {
+    int a;
+    int b;
+    int c;
+    int bank;
+    int pc;
+    int flags;
+}

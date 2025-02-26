@@ -7,3 +7,4 @@
 Aslion.desktop
 asm/test*.asm
 ignore
+!asm/aslios.yabal

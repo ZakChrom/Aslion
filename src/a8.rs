@@ -56,15 +56,20 @@ enum Instruction {
     ///     Reg B: Location to jump to if called
     ///     Does not change any registers
     /// 
+    ///     Code 0 gets called every 1000 instructions (for now) so dont use it for things other than for timing
+    /// 
     /// INT 2 is int call
     ///     Reg A: Code
     ///     Does not change any registers
     /// 
-    /// INT 3 is int ret
-    ///     Resets state to before call (registers, flags and bank)
+    /// INT 3 is pop int stack
+    ///     Pops the state of when it was called and puts it to location from reg a (a..a + 6)
     /// 
     /// INT 4 is panic
     ///     It panic
+    /// 
+    /// INT 5 is int return
+    ///     Loads state from location from reg a
     INT,
     BNKC,
     LDWB
@@ -144,8 +149,9 @@ impl ParsingState<'_> {
 
     fn next_u16(&mut self, chunks: &mut Split<'_, &str>) -> Option<u16> {
         let chunk = if let Some(c) = chunks.next() { c } else {
-            self.error("Expected u16".to_string());
-            panic!();
+            return None; // TODO: Idk if this breaks anything but it should be like this
+            // self.error("Expected u16".to_string());
+            // panic!();
         };
         if let Ok(parsed) = chunk.parse::<u32>() {
             if parsed > 65535 {
@@ -233,7 +239,7 @@ pub struct A8 {
     pub vbuf: bool,
     pub memory: Box<[[u16; 65536]; MAX_BANKS as usize]>,
     pub int_table: HashMap<u16, u16>,
-    pub int_stack: Vec<IntThing>
+    pub interupt_saved_state: Option<IntThing>
 }
 
 impl A8 {
@@ -326,7 +332,7 @@ impl A8 {
             vbuf: false,
             memory,
             int_table: HashMap::new(),
-            int_stack: vec![]
+            interupt_saved_state: None
         })
     }
 
@@ -464,8 +470,8 @@ impl A8 {
                         self.int_table.insert(self.a, self.b);
                     },
                     2 => {
-                        assert!(self.int_stack.len() <= 64, "Int stack limit reached (64). This limit is completly arbitrary so if u dont like it complain to Calion :thubm_up:");
-                        self.int_stack.push(IntThing {
+                        assert!(self.interupt_saved_state.is_none(), "No nested interupts allowed");
+                        self.interupt_saved_state = Some(IntThing {
                             a: self.a,
                             b: self.b,
                             c: self.c,
@@ -476,16 +482,28 @@ impl A8 {
                         self.pc = *self.int_table.get(&self.a).expect(format!("Interupt {} was not found", self.a).as_str());
                     },
                     3 => {
-                        let int_thing = self.int_stack.pop().expect("No int thing in int stack");
-                        self.a = int_thing.a;
-                        self.b = int_thing.b;
-                        self.c = int_thing.c;
-                        self.bank = int_thing.bank;
-                        self.pc = int_thing.pc;
-                        self.flags = int_thing.flags;
+                        let int_thing = self.interupt_saved_state.as_ref().expect("Not in interupt");
+                        self.memory[self.bank as usize][self.a as usize + 0] = int_thing.a;
+                        self.memory[self.bank as usize][self.a as usize + 1] = int_thing.b;
+                        self.memory[self.bank as usize][self.a as usize + 2] = int_thing.c;
+                        self.memory[self.bank as usize][self.a as usize + 3] = int_thing.bank;
+                        self.memory[self.bank as usize][self.a as usize + 4] = int_thing.pc;
+                        self.memory[self.bank as usize][self.a as usize + 5] = int_thing.flags;
                     },
                     4 => {
                         panic!("PC: {} A: {} B: {} C: {} F: {} BNK: {} V: {}", self.pc - 1, self.a, self.b, self.c, self.flags, self.bank, self.vbuf)
+                    },
+                    5 => {
+                        let loc = self.a as usize;
+                        let bank = self.bank as usize;
+                        println!("{}", self.memory[bank][loc + 4]);
+                        self.a     = self.memory[bank][loc + 0];
+                        self.b     = self.memory[bank][loc + 1];
+                        self.c     = self.memory[bank][loc + 2];
+                        self.bank  = self.memory[bank][loc + 3];
+                        self.pc    = self.memory[bank][loc + 4];
+                        self.flags = self.memory[bank][loc + 5];
+                        self.interupt_saved_state = None;
                     }
                     _ => {
                         panic!("Invalid special instruction type {}", data);
@@ -497,6 +515,21 @@ impl A8 {
                 self.b = self.memory[data as usize][self.pc as usize];
                 self.pc = self.pc.wrapping_add(1);
             }
+        }
+    }
+
+    pub fn fire_periodic_interupt(&mut self) {
+        if let Some(pc) = self.int_table.get(&0) {
+            assert!(self.interupt_saved_state.is_none(), "No nested interupts allowed");
+            self.interupt_saved_state = Some(IntThing {
+                a: self.a,
+                b: self.b,
+                c: self.c,
+                bank: self.bank,
+                pc: self.pc,
+                flags: self.flags
+            });
+            self.pc = *pc;
         }
     }
 }
