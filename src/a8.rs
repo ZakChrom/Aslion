@@ -228,6 +228,21 @@ pub struct IntThing {
     pub flags: u16,
 }
 
+pub enum Mode {
+    User,
+    Machine(IntThing)
+}
+
+impl Mode {
+    fn get_machine(&self) -> Option<&IntThing> {
+        if let Mode::Machine(i) = self {
+            Some(i)
+        } else {
+            None
+        }
+    }
+}
+
 pub struct A8 {
     pub a: u16,
     pub b: u16,
@@ -239,7 +254,9 @@ pub struct A8 {
     pub vbuf: bool,
     pub memory: Box<[[u16; 65536]; MAX_BANKS as usize]>,
     pub int_table: HashMap<u16, u16>,
-    pub interupt_saved_state: Option<IntThing>
+    pub mode: Mode,
+    pub ep_write: Option<Box<dyn FnMut(&mut A8, u16, u16)>>,
+    pub ep_read: Option<Box<dyn FnMut(&mut A8, u16)>>,
 }
 
 impl A8 {
@@ -332,8 +349,32 @@ impl A8 {
             vbuf: false,
             memory,
             int_table: HashMap::new(),
-            interupt_saved_state: None
+            mode: Mode::User,
+            ep_write: None,
+            ep_read: None
         })
+    }
+
+    #[inline(always)]
+    fn write(&mut self, b: u16, i: u16, v: u16) {
+        self.memory[b as usize][i as usize] = v;
+        if b == 1 && i >= 53500 && i <= 53544 {
+            if let Some(mut func) = self.ep_write.take() {
+                func(self, i - 53500, v);
+                self.ep_write = Some(func); // Rust is dumb
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn read(&mut self, b: u16, i: u16) -> u16 {
+        if b == 1 && i >= 53500 && i <= 53544 {
+            if let Some(mut func) = self.ep_read.take() {
+                func(self, i - 53500);
+                self.ep_read = Some(func);
+            }
+        }
+        self.memory[b as usize][i as usize]
     }
 
     pub fn step(&mut self) {
@@ -400,14 +441,14 @@ impl A8 {
                 }
             },
             Instruction::JREG => { self.pc = self.a },
-            Instruction::LDAIN => { self.a = self.memory[self.bank as usize][self.a as usize] },
-            Instruction::STAOUT => { self.memory[self.bank as usize][self.a as usize] = self.b },
+            Instruction::LDAIN => { self.a = self.read(self.bank, self.a) },
+            Instruction::STAOUT => { self.write(self.bank, self.a, self.b) },
             Instruction::LDLGE => {
-                self.a = self.memory[data as usize][self.memory[0][self.pc as usize] as usize];
+                self.a = self.read(data, self.memory[0][self.pc as usize]);
                 self.pc = self.pc.wrapping_add(1);
             },
             Instruction::STLGE => {
-                self.memory[data as usize][self.memory[0][self.pc as usize] as usize] = self.a;
+                self.write(data, self.memory[0][self.pc as usize], self.a);
                 self.pc = self.pc.wrapping_add(1);
             },
             Instruction::LDW => {
@@ -470,8 +511,8 @@ impl A8 {
                         self.int_table.insert(self.a, self.b);
                     },
                     2 => {
-                        assert!(self.interupt_saved_state.is_none(), "No nested interupts allowed");
-                        self.interupt_saved_state = Some(IntThing {
+                        assert!(std::mem::discriminant(&self.mode) == std::mem::discriminant(&Mode::User), "Interupts in machine mode not allowed");
+                        self.mode = Mode::Machine(IntThing {
                             a: self.a,
                             b: self.b,
                             c: self.c,
@@ -482,7 +523,7 @@ impl A8 {
                         self.pc = *self.int_table.get(&self.a).expect(format!("Interupt {} was not found", self.a).as_str());
                     },
                     3 => {
-                        let int_thing = self.interupt_saved_state.as_ref().expect("Not in interupt");
+                        let int_thing = self.mode.get_machine().expect("Not in machine mode");
                         self.memory[self.bank as usize][self.a as usize + 0] = int_thing.a;
                         self.memory[self.bank as usize][self.a as usize + 1] = int_thing.b;
                         self.memory[self.bank as usize][self.a as usize + 2] = int_thing.c;
@@ -496,14 +537,13 @@ impl A8 {
                     5 => {
                         let loc = self.a as usize;
                         let bank = self.bank as usize;
-                        println!("{}", self.memory[bank][loc + 4]);
                         self.a     = self.memory[bank][loc + 0];
                         self.b     = self.memory[bank][loc + 1];
                         self.c     = self.memory[bank][loc + 2];
                         self.bank  = self.memory[bank][loc + 3];
                         self.pc    = self.memory[bank][loc + 4];
                         self.flags = self.memory[bank][loc + 5];
-                        self.interupt_saved_state = None;
+                        self.mode = Mode::User;
                     }
                     _ => {
                         panic!("Invalid special instruction type {}", data);
@@ -520,8 +560,8 @@ impl A8 {
 
     pub fn fire_periodic_interupt(&mut self) {
         if let Some(pc) = self.int_table.get(&0) {
-            assert!(self.interupt_saved_state.is_none(), "No nested interupts allowed");
-            self.interupt_saved_state = Some(IntThing {
+            assert!(std::mem::discriminant(&self.mode) == std::mem::discriminant(&Mode::User), "Interupts in machine mode not allowed");
+            self.mode = Mode::Machine(IntThing {
                 a: self.a,
                 b: self.b,
                 c: self.c,

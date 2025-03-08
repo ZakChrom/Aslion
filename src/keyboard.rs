@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ptr::addr_of_mut};
 
 use crate::{raylib::{IsKeyDown, IsKeyReleased, Key}, Emulator};
 
@@ -11,94 +11,110 @@ pub struct KeyPress {
     pub uses: usize,
 }
 
+pub static mut RAYLIB_TO_SDCII: Option<HashMap<i32, u16>> = None;
+pub static mut SDCII_TO_ASCII: Option<HashMap<u16, char>> = None;
+
+pub fn init_keydict() {
+    unsafe { assert!(RAYLIB_TO_SDCII.is_none()); }
+    unsafe { assert!(SDCII_TO_ASCII.is_none()); }
+    let mut raylib_to_sdcii = HashMap::new();
+    let mut sdcii_to_ascii = HashMap::new();
+    raylib_to_sdcii.insert(Key::Space as i32, 0);         sdcii_to_ascii.insert(0, ' ');
+    raylib_to_sdcii.insert(Key::KpAdd as i32, 3);         sdcii_to_ascii.insert(3, '+');
+    raylib_to_sdcii.insert(Key::Minus as i32, 4);         sdcii_to_ascii.insert(4, '-');
+    raylib_to_sdcii.insert(Key::KpMultiply as i32, 5);    sdcii_to_ascii.insert(5, '*');
+    raylib_to_sdcii.insert(Key::Slash as i32, 6);         sdcii_to_ascii.insert(6, '/');
+    raylib_to_sdcii.insert('_' as i32, 8);                sdcii_to_ascii.insert(8, '_');
+    raylib_to_sdcii.insert('<' as i32, 9);                sdcii_to_ascii.insert(9, '<');
+    raylib_to_sdcii.insert('>' as i32, 10);               sdcii_to_ascii.insert(10, '>');
+    raylib_to_sdcii.insert('|' as i32, 11);               sdcii_to_ascii.insert(11, '|');
+    raylib_to_sdcii.insert(Key::A as i32, 13);            sdcii_to_ascii.insert(13, 'A');
+    raylib_to_sdcii.insert(Key::B as i32, 14);            sdcii_to_ascii.insert(14, 'B');
+    raylib_to_sdcii.insert(Key::C as i32, 15);            sdcii_to_ascii.insert(15, 'C');
+    raylib_to_sdcii.insert(Key::D as i32, 16);            sdcii_to_ascii.insert(16, 'D');
+    raylib_to_sdcii.insert(Key::E as i32, 17);            sdcii_to_ascii.insert(17, 'E');
+    raylib_to_sdcii.insert(Key::F as i32, 18);            sdcii_to_ascii.insert(18, 'F');
+    raylib_to_sdcii.insert(Key::G as i32, 19);            sdcii_to_ascii.insert(19, 'G');
+    raylib_to_sdcii.insert(Key::H as i32, 20);            sdcii_to_ascii.insert(20, 'H');
+    raylib_to_sdcii.insert(Key::I as i32, 21);            sdcii_to_ascii.insert(21, 'I');
+    raylib_to_sdcii.insert(Key::J as i32, 22);            sdcii_to_ascii.insert(22, 'J');
+    raylib_to_sdcii.insert(Key::K as i32, 23);              sdcii_to_ascii.insert(23, 'K');
+    raylib_to_sdcii.insert(Key::L as i32, 24);            sdcii_to_ascii.insert(24, 'L');
+    raylib_to_sdcii.insert(Key::M as i32, 25);            sdcii_to_ascii.insert(25, 'M');
+    raylib_to_sdcii.insert(Key::N as i32, 26);            sdcii_to_ascii.insert(26, 'N');
+    raylib_to_sdcii.insert(Key::O as i32, 27);            sdcii_to_ascii.insert(27, 'O');
+    raylib_to_sdcii.insert(Key::P as i32, 28);            sdcii_to_ascii.insert(28, 'P');
+    raylib_to_sdcii.insert(Key::Q as i32, 29);            sdcii_to_ascii.insert(29, 'Q');
+    raylib_to_sdcii.insert(Key::R as i32, 30);            sdcii_to_ascii.insert(30, 'R');
+    raylib_to_sdcii.insert(Key::S as i32, 31);            sdcii_to_ascii.insert(31, 'S');
+    raylib_to_sdcii.insert(Key::T as i32, 32);            sdcii_to_ascii.insert(32, 'T');
+    raylib_to_sdcii.insert(Key::U as i32, 33);            sdcii_to_ascii.insert(33, 'U');
+    raylib_to_sdcii.insert(Key::V as i32, 34);            sdcii_to_ascii.insert(34, 'V');
+    raylib_to_sdcii.insert(Key::W as i32, 35);            sdcii_to_ascii.insert(35, 'W');
+    raylib_to_sdcii.insert(Key::X as i32, 36);            sdcii_to_ascii.insert(36, 'X');
+    raylib_to_sdcii.insert(Key::Y as i32, 37);            sdcii_to_ascii.insert(37, 'Y');
+    raylib_to_sdcii.insert(Key::Z as i32, 38);            sdcii_to_ascii.insert(38, 'Z');
+    raylib_to_sdcii.insert('?' as i32, 49);               sdcii_to_ascii.insert(49, '?');
+    raylib_to_sdcii.insert('!' as i32, 50);               sdcii_to_ascii.insert(50, '!');
+    raylib_to_sdcii.insert('#' as i32, 51);               sdcii_to_ascii.insert(51, '#');
+    raylib_to_sdcii.insert('$' as i32, 52);               sdcii_to_ascii.insert(52, '$');
+    raylib_to_sdcii.insert('%' as i32, 53);               sdcii_to_ascii.insert(53, '%');
+    raylib_to_sdcii.insert(Key::Period as i32, 54);       sdcii_to_ascii.insert(54, '.');
+    raylib_to_sdcii.insert(Key::Comma as i32, 55);        sdcii_to_ascii.insert(55, ',');
+    raylib_to_sdcii.insert(':' as i32, 56);               sdcii_to_ascii.insert(56, ':');
+    raylib_to_sdcii.insert(Key::Semicolon as i32, 57);    sdcii_to_ascii.insert(57, ';');
+    raylib_to_sdcii.insert('(' as i32, 58);               sdcii_to_ascii.insert(58, '(');
+    raylib_to_sdcii.insert(')' as i32, 59);               sdcii_to_ascii.insert(59, ')');
+    raylib_to_sdcii.insert(Key::LeftBracket as i32, 60);  sdcii_to_ascii.insert(60, '[');
+    raylib_to_sdcii.insert(Key::RightBracket as i32, 61); sdcii_to_ascii.insert(61, ']');
+    raylib_to_sdcii.insert('{' as i32, 62);               sdcii_to_ascii.insert(62, '{');
+    raylib_to_sdcii.insert('}' as i32, 63);               sdcii_to_ascii.insert(63, '}');
+    raylib_to_sdcii.insert('"' as i32, 64);               sdcii_to_ascii.insert(64, '"');
+    raylib_to_sdcii.insert(Key::Apostrophe as i32, 65);   sdcii_to_ascii.insert(65, '\'');
+    raylib_to_sdcii.insert(Key::KpMultiply as i32, 66);   sdcii_to_ascii.insert(66, '*');
+    raylib_to_sdcii.insert('^' as i32, 67);               sdcii_to_ascii.insert(67, '^');
+    raylib_to_sdcii.insert(Key::Equal as i32, 6);         sdcii_to_ascii.insert(6, '=');
+    raylib_to_sdcii.insert(Key::KpEqual as i32, 6);
+    raylib_to_sdcii.insert('0' as i32, 39);               sdcii_to_ascii.insert(39, '0');
+    raylib_to_sdcii.insert('1' as i32, 40);               sdcii_to_ascii.insert(40, '1');
+    raylib_to_sdcii.insert('2' as i32, 41);               sdcii_to_ascii.insert(41, '2');
+    raylib_to_sdcii.insert('3' as i32, 42);               sdcii_to_ascii.insert(42, '3');
+    raylib_to_sdcii.insert('4' as i32, 43);               sdcii_to_ascii.insert(43, '4');
+    raylib_to_sdcii.insert('5' as i32, 44);               sdcii_to_ascii.insert(44, '5');
+    raylib_to_sdcii.insert('6' as i32, 45);               sdcii_to_ascii.insert(45, '6');
+    raylib_to_sdcii.insert('7' as i32, 46);               sdcii_to_ascii.insert(46, '7');
+    raylib_to_sdcii.insert('8' as i32, 47);               sdcii_to_ascii.insert(47, '8');
+    raylib_to_sdcii.insert('9' as i32, 48);               sdcii_to_ascii.insert(48, '9');
+    raylib_to_sdcii.insert(Key::Kp0 as i32, 39);
+    raylib_to_sdcii.insert(Key::Kp1 as i32, 40);
+    raylib_to_sdcii.insert(Key::Kp2 as i32, 41);
+    raylib_to_sdcii.insert(Key::Kp3 as i32, 42);
+    raylib_to_sdcii.insert(Key::Kp4 as i32, 43);
+    raylib_to_sdcii.insert(Key::Kp5 as i32, 44);
+    raylib_to_sdcii.insert(Key::Kp6 as i32, 45);
+    raylib_to_sdcii.insert(Key::Kp7 as i32, 46);
+    raylib_to_sdcii.insert(Key::Kp8 as i32, 47);
+    raylib_to_sdcii.insert(Key::Kp9 as i32, 48);
+    raylib_to_sdcii.insert(Key::Enter as i32, 85);        sdcii_to_ascii.insert(85, '\n');
+     // Backspace
+    raylib_to_sdcii.insert(259, 70); sdcii_to_ascii.insert(0, ' ');
+    unsafe {
+        RAYLIB_TO_SDCII = Some(raylib_to_sdcii);
+        SDCII_TO_ASCII = Some(sdcii_to_ascii);
+    }
+}
+
 impl KeyPress {
     pub fn new(key: i32, down: bool) -> KeyPress {
         KeyPress { key, down, uses: 2 }
     }
 
+    #[inline(always)]
     pub fn to_sdcii(&self) -> u16 {
         // You cant cast in a match so i had to make a hashmap
         // This function is only ran whenever you press a button so it shouldnt affect the performance that much
-        let mut dict: HashMap<i32, u16> = HashMap::new();
-        dict.insert(Key::Space as i32, 0);
-        dict.insert(Key::KpAdd as i32, 3);
-        dict.insert(Key::Minus as i32, 4);
-        dict.insert(Key::KpMultiply as i32, 5);
-        dict.insert(Key::Slash as i32, 6);
-        dict.insert('_' as i32, 8);
-        dict.insert('<' as i32, 9);
-        dict.insert('>' as i32, 10);
-        dict.insert('|' as i32, 11);
-        dict.insert(Key::A as i32, 13);
-        dict.insert(Key::B as i32, 14);
-        dict.insert(Key::C as i32, 15);
-        dict.insert(Key::D as i32, 16);
-        dict.insert(Key::E as i32, 17);
-        dict.insert(Key::F as i32, 18);
-        dict.insert(Key::G as i32, 19);
-        dict.insert(Key::H as i32, 20);
-        dict.insert(Key::I as i32, 21);
-        dict.insert(Key::J as i32, 22);
-        dict.insert(Key::K as i32, 23);
-        dict.insert(Key::L as i32, 24);
-        dict.insert(Key::M as i32, 25);
-        dict.insert(Key::N as i32, 26);
-        dict.insert(Key::O as i32, 27);
-        dict.insert(Key::P as i32, 28);
-        dict.insert(Key::Q as i32, 29);
-        dict.insert(Key::R as i32, 30);
-        dict.insert(Key::S as i32, 31);
-        dict.insert(Key::T as i32, 32);
-        dict.insert(Key::U as i32, 33);
-        dict.insert(Key::V as i32, 34);
-        dict.insert(Key::W as i32, 35);
-        dict.insert(Key::X as i32, 36);
-        dict.insert(Key::Y as i32, 37);
-        dict.insert(Key::Z as i32, 38);
-        dict.insert('?' as i32, 49);
-        dict.insert('!' as i32, 50);
-        dict.insert('#' as i32, 51);
-        dict.insert('$' as i32, 52);
-        dict.insert('%' as i32, 53);
-        dict.insert(Key::Period as i32, 54);
-        dict.insert(Key::Comma as i32, 55);
-        dict.insert(':' as i32, 56);
-        dict.insert(Key::Semicolon as i32, 57);
-        dict.insert('(' as i32, 58);
-        dict.insert(')' as i32, 59);
-        dict.insert(Key::LeftBracket as i32, 60);
-        dict.insert(Key::RightBracket as i32, 61);
-        dict.insert('{' as i32, 62);
-        dict.insert('}' as i32, 63);
-        dict.insert('"' as i32, 64);
-        dict.insert(Key::Apostrophe as i32, 65);
-        dict.insert(Key::KpMultiply as i32, 66);
-        dict.insert('^' as i32, 67);
-        dict.insert(Key::Equal as i32, 6);
-        dict.insert(Key::KpEqual as i32, 6);
-        dict.insert('0' as i32, 39);
-        dict.insert('1' as i32, 40);
-        dict.insert('2' as i32, 41);
-        dict.insert('3' as i32, 42);
-        dict.insert('4' as i32, 43);
-        dict.insert('5' as i32, 44);
-        dict.insert('6' as i32, 45);
-        dict.insert('7' as i32, 46);
-        dict.insert('8' as i32, 47);
-        dict.insert('9' as i32, 48);
-        dict.insert(Key::Kp0 as i32, 39);
-        dict.insert(Key::Kp1 as i32, 40);
-        dict.insert(Key::Kp2 as i32, 41);
-        dict.insert(Key::Kp3 as i32, 42);
-        dict.insert(Key::Kp4 as i32, 43);
-        dict.insert(Key::Kp5 as i32, 44);
-        dict.insert(Key::Kp6 as i32, 45);
-        dict.insert(Key::Kp7 as i32, 46);
-        dict.insert(Key::Kp8 as i32, 47);
-        dict.insert(Key::Kp9 as i32, 48);
-        dict.insert(Key::Enter as i32, 85);
-        dict.insert(259, 70); // Backspace
-        *dict.get(&self.key).expect("Invalid sdcii key")
+        let dict = unsafe { (&mut *addr_of_mut!(RAYLIB_TO_SDCII)).as_mut().unwrap() };
+        *dict.get(&self.key).expect("Unknown sdcii key")
     }
 }
 

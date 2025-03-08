@@ -20,8 +20,8 @@ mod keyboard;
 mod mouse;
 mod chars_editor;
 
-use std::{collections::HashMap, ffi::{c_char, c_int, c_uint, c_void, CStr, CString}, time::{Duration, Instant}};
-use a8::A8;
+use std::{collections::HashMap, ffi::{c_char, c_int, c_uint, c_void, CStr, CString}, ptr::addr_of_mut, time::{Duration, Instant}};
+use a8::{Mode, A8};
 use keyboard::{handle_keypresses, KeyPress};
 use mouse::handle_mouse;
 use raylib::{BeginDrawing, BeginShaderMode, ClearBackground, CloseWindow, Color, ConfigFlags, DrawFPS, DrawText, DrawTextureEx, EndDrawing, EndShaderMode, GetShaderLocation, GetTime, Image, InitWindow, IsFileDropped, IsKeyPressed, IsShaderReady, LoadDroppedFiles, LoadShaderFromMemory, LoadTextureFromImage, PixelFormat, SetConfigFlags, SetShaderValue, SetShaderValueTexture, SetTargetFPS, SetTraceLogLevel, Shader, Texture, UnloadDroppedFiles, UnloadShader, UnloadTexture, UpdateTexture, Vector2, WindowShouldClose, WHITE};
@@ -115,6 +115,11 @@ struct Emulator {
     pressed_keys: Vec<bool>,
 }
 
+static mut TEMP_FILENAME: Vec<u8> = Vec::new();
+static mut TEMP_FILE_CONTENTS: Vec<u8> = Vec::new();
+static mut FILES_EXPANSION_STATE: u8 = 0;
+static mut FILES: Option<HashMap<String, Vec<u8>>> = None;
+
 fn main() { unsafe {
     let args = Args::parse();
     if args.fps < 0 || args.log_level < 0 {
@@ -175,6 +180,8 @@ fn main() { unsafe {
     drop(font_stuff);
 
     if !load_shader() { panic!("Cant start with invalid shader") };
+
+    keyboard::init_keydict();
     
     let mut instructions: u64 = 0;
     let mut total_instructions: u64 = 0;
@@ -182,18 +189,103 @@ fn main() { unsafe {
     let mut mhz_timer = Instant::now();
     let mut mhz: f64 = 0.0;
 
+    FILES = Some(HashMap::new());
+    a8.ep_write = Some(Box::new(|a8, ep, v| {
+        if ep == 5 {
+            if v >> 8 == 0b11110000 {
+                let mut temp_filename = unsafe { &mut *addr_of_mut!(TEMP_FILENAME) };
+                let mut temp_file_contents = unsafe { &mut *addr_of_mut!(TEMP_FILE_CONTENTS) };
+                let c = (v & 0b11111111) as u8;
+                if c == 85 {
+                    FILES_EXPANSION_STATE = 1;
+                } else if c == 78 {
+                    let files = unsafe { (&mut *addr_of_mut!(FILES)).as_mut().unwrap() };
+                    let keydict = unsafe { (&mut *addr_of_mut!(keyboard::SDCII_TO_ASCII)).as_mut().unwrap() };
+                    let filename = temp_filename.clone().iter().map(|c| keydict.get(&(*c as u16)).unwrap()).collect::<String>();
+                    files.insert(filename, temp_file_contents.clone());
+                    FILES_EXPANSION_STATE = 0;
+                    *temp_filename = Vec::new();
+                    *temp_file_contents = Vec::new();
+                } else {
+                    if FILES_EXPANSION_STATE == 0 {
+                        temp_filename.push(c);
+                    }
+    
+                    if FILES_EXPANSION_STATE == 1 {
+                        temp_file_contents.push(c);
+                    }
+                }
+                a8.memory[1][53505] = 0;
+            } else if v >> 8 == 0b11010000 {
+                let c = (v & 0b11111111) as u8;
+                if FILES_EXPANSION_STATE == 0 {
+                    FILES_EXPANSION_STATE = 2;
+                }
+
+                if FILES_EXPANSION_STATE == 2 {
+                    let mut temp_filename = unsafe { &mut *addr_of_mut!(TEMP_FILENAME) };
+                    let mut temp_file_contents = unsafe { &mut *addr_of_mut!(TEMP_FILE_CONTENTS) };
+                    if c == 85 {
+                        let files = unsafe { (&mut *addr_of_mut!(FILES)).as_mut().unwrap() };
+                        let keydict = unsafe { (&mut *addr_of_mut!(keyboard::SDCII_TO_ASCII)).as_mut().unwrap() };
+                        let filename = temp_filename.clone().iter().map(|c| keydict.get(&(*c as u16)).unwrap()).collect::<String>();
+                        if let Some(file) = files.get(&filename) {
+                            *temp_file_contents = file.clone();
+                        } else {
+                            *temp_file_contents = Vec::new();
+                        }
+                        FILES_EXPANSION_STATE = 3;
+                    }
+                    temp_filename.push(c);
+                    a8.memory[1][53505] = 0;
+                }
+            }
+            
+            if FILES_EXPANSION_STATE == 4 && v == 0 {
+                println!("reset");
+                FILES_EXPANSION_STATE = 3;
+            }
+        }
+    }));
+
+    a8.ep_read = Some(Box::new(|a8, e| {
+        if e == 5 {
+            if FILES_EXPANSION_STATE == 3 {
+                let mut temp_file_contents = unsafe { &mut *addr_of_mut!(TEMP_FILE_CONTENTS) };
+                FILES_EXPANSION_STATE = 4;
+                println!("{}", temp_file_contents.len());
+                if temp_file_contents.len() == 0 {
+                    FILES_EXPANSION_STATE = 0;
+                    println!("end");
+                    a8.memory[1][53505] = 0b0000111111111111;
+                    return
+                }
+                let chr = temp_file_contents.remove(0);
+                println!("R: {}", chr);
+                 // TODO: I expect the contents of files to be in sdcii but that may change someday so convert to sdcii here?
+                a8.memory[1][53505] = 0b100000000000000 | chr as u16;
+            }
+        }
+    }));
+
     while !WindowShouldClose() {
         if IsFileDropped() {
             let files = LoadDroppedFiles();
             assert!(files.count == 1, "You dropped too many files (or 0 somehow). Idk how i would handle this");
             let paths = unsafe_convert_to_strings(files.paths);
             a8 = A8::new_from_file(paths[0]).unwrap();
+            instructions = 0;
+            total_instructions = 0;
+            time = Instant::now();
+            mhz_timer = Instant::now();
+            mhz = 0.0;
             UnloadDroppedFiles(files);
         }
 
         while !a8.vbuf {
             if total_instructions % 10000 == 9999 {
-                if a8.interupt_saved_state.is_none() {
+                if let Mode::User = a8.mode {
+                    //println!("{} {} | {} {}", a8.memory[0][9], a8.pc, a8.memory[4][4], a8.memory[4][10]);
                     a8.fire_periodic_interupt();
                 }
             }

@@ -3,7 +3,7 @@ const var chars = create_pointer(53546, 1);
 inline int get_color(int r, int g, int b) => (r / 8 << 10) + (g / 8 << 5) + (b / 8);
 int offset = 0;
 
-int current_task = 10920; // Last ish task
+int current_task = 0;//10920; // Last ish task
 int total_tasks = 0;
 const var tasks = create_pointer<Task>(0, 4);
 int time_s = create_pointer(16755, 5);
@@ -19,28 +19,50 @@ int last_ms = 0;
 // INTRET  = 59397
 
 void interupt() {
-    int ptr = current_task * 6;
+    //int ptr = current_task * 6;
+    //if (current_task == 10920) {
+    //    ptr = 65520;
+    //    current_task = 65535; // Overflow to 0 below
+    //}
+
     asm {
-        AIN @ptr
+        AIN @current_task
+        LDIB 6
+        MULT
         BNK 4
             // pop state
             HERE 59395
         BNK 0
-    }
 
-    current_task += 1;
-    current_task = current_task % total_tasks;
-    int ptr = current_task * 6;
-    asm {
-        AIN @ptr
+        AIN @current_task
+        LDIB 1
+        ADD
+        AND // TODO: % total_tasks. Idk how to do mod so its just & for now
+        STA @current_task
+        
+        LDIB 6
+        MULT
+        
         BNK 4
             // set state
             HERE 59397
         BNK 0
     }
+
+    //current_task += 1;
+    //current_task = current_task % 2;
+    
+    //int ptr = current_task * 6;
+    //asm {
+    //    AIN @ptr
+    //    BNK 4
+    //        // set state
+    //        HERE 59397
+    //    BNK 0
+    //}
 }
 
-void create_task(func<void> task) {
+void create_task(int task) {
     tasks[total_tasks].pc = task;
     total_tasks += 1;
 }
@@ -54,46 +76,29 @@ void save_interupt(int code, func<void> func) {
     }
 }
 
-save_interupt(0, interupt); // Periodic (10000 instructions) interupt. Dont call it manually!
-
-create_task(() => {
+void second_task() {
     asm {
         // second task
-        HERE 59396
+        //HERE 59396
+        label:
+        LDW
+        HERE 32767
+        BNK 1
+        STAOUT
+        HERE 53870
+        BNK 0
+        JMP label
     }
-    while (true) {
-        screen[0] = get_color(255, 0, 255);
-    }
-});
+    //while (true) {
+    //    screen[0] = get_color(255, 0, 255);
+    //}
+}
 
-create_task(() => {
-    screen[1] = get_color(255, 255, 255);
+void main_task() {
+    //screen[1] = get_color(255, 255, 255);
     asm {
+        // main task
         loop:
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
-        HERE 0
         VBUF
         JMP loop
     }
@@ -127,11 +132,18 @@ create_task(() => {
     //        chars[i] = 0;
     //    }
     //}
-});
+}
+
+tasks[0].pc = main_task;
+tasks[1].pc = second_task;
+total_tasks = 2;
+
+save_interupt(0, interupt); // Periodic (10000 instructions) interupt. Maybe can be used like yield but instruction count wont be reset
+main_task();
 
 // No yield yet so we have to wait for it to switch to anouther task
 // The state of this one should get destroyed
-while (true) {;}
+//while (true) {;}
 
 void write(int c) {
     chars[offset] = c
