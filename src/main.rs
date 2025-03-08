@@ -2,16 +2,12 @@
 #![allow(unused)]
 
 // Extensions:
-//     16755 - 26755 of bank 5 (both inclusive) are reserved for Aslion
-//     Please dont use them :)
-// 
 //     AslionInterupts;
 //         Docs at Instruction::INT
-//     AslionTime:
+//     AslionTime: // TODO: Move this to expansion port
 //         16755 of bank 5 is seconds since boot
 //         16756 of bank 5 is ms since boot
 //         16757 of bank 5 is ns since boot
-//         For performance reasons it gets updated every 1000 instructions for now (same as timer interupt)
 
 mod a8;
 mod raylib;
@@ -169,7 +165,6 @@ fn main() { unsafe {
     });
 
     let font_stuff = render::font().clone().iter().map(|e| if *e { u32::MAX } else { 0 }).collect::<Vec<u32>>();
-    let font_len = font_stuff.len();
     let font_texture = LoadTextureFromImage(Image {
         data: font_stuff.as_ptr() as *mut c_void,
         width: font_stuff.len() as i32,
