@@ -4,10 +4,10 @@
 // Extensions:
 //     AslionInterupts;
 //         Docs at Instruction::INT
-//     AslionTime: // TODO: Move this to expansion port
-//         16755 of bank 5 is seconds since boot
-//         16756 of bank 5 is ms since boot
-//         16757 of bank 5 is ns since boot
+//     AslionTime:
+//         53503 of bank 1 is seconds since boot
+//         53504 of bank 2 is ms since boot
+//         53505 of bank 3 is μs since boot
 
 mod a8;
 mod raylib;
@@ -243,7 +243,7 @@ fn main() { unsafe {
         }
     }));
 
-    a8.ep_read = Some(Box::new(|a8, e| {
+    a8.ep_read = Some(Box::new(move |a8, e| {
         if e == 5 {
             if FILES_EXPANSION_STATE == 3 {
                 let mut temp_file_contents = unsafe { &mut *addr_of_mut!(TEMP_FILE_CONTENTS) };
@@ -260,6 +260,11 @@ fn main() { unsafe {
                  // TODO: I expect the contents of files to be in sdcii but that may change someday so convert to sdcii here?
                 a8.memory[1][53505] = 0b100000000000000 | chr as u16;
             }
+        } else if e >= 6 && e <= 8 {
+            let thing = time.elapsed();
+            a8.memory[1][53506] = thing.as_secs() as u16;
+            a8.memory[1][53507] = thing.as_millis() as u16;
+            a8.memory[1][53508] = thing.as_micros() as u16;
         }
     }));
 
@@ -285,10 +290,7 @@ fn main() { unsafe {
                 }
             }
             if total_instructions % 100 == 99 {
-                let thing = time.elapsed();
-                a8.memory[5][16755] = thing.as_secs() as u16;
-                a8.memory[5][16756] = thing.as_millis() as u16;
-                a8.memory[5][16757] = thing.as_nanos() as u16;
+                
             }
             a8.step();
             instructions += 1;

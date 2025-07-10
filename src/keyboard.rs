@@ -100,6 +100,13 @@ pub fn init_keydict() {
     raylib_to_sdcii.insert(Key::Enter as i32, 85);     sdcii_to_ascii.insert(85, '\n');
     // Backspace
     raylib_to_sdcii.insert(259, 70); sdcii_to_ascii.insert(70, 0x08 as char);
+
+    // Arros keys in wasd order
+    raylib_to_sdcii.insert(265, 71); sdcii_to_ascii.insert(71, '\u{109}');
+    raylib_to_sdcii.insert(263, 9); sdcii_to_ascii.insert(9, '\u{107}');
+    raylib_to_sdcii.insert(264, 72); sdcii_to_ascii.insert(72, '\u{108}');
+    raylib_to_sdcii.insert(262, 10); sdcii_to_ascii.insert(10, '\u{106}');
+
     unsafe {
         RAYLIB_TO_SDCII = Some(raylib_to_sdcii);
         SDCII_TO_ASCII = Some(sdcii_to_ascii);
